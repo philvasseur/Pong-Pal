@@ -1,7 +1,7 @@
 """ Commands handled by the slack bot """
 from datetime import datetime
 from init import Message, BOT_ID
-import os,logging,sqlite3
+import os,logging,sqlite3,elosimple
 from beautifultable import BeautifulTable
 conn = sqlite3.connect('pingpong.db')
 c = conn.cursor()
@@ -42,7 +42,6 @@ def handleMatchInput(message):
 	playerOneName = playerOneRow[0]
 	playerOneElo = playerOneRow[1]
 	if (playerOneElo == None):
-		c.execute('UPDATE players SET ELO=1200 WHERE user_id=?;', [playerOneId])
 		playerOneElo = 1200
 
 	c.execute('SELECT name, ELO FROM players WHERE user_id=?;', [playerTwoId])
@@ -52,13 +51,14 @@ def handleMatchInput(message):
 	playerTwoName = playerTwoRow[0]
 	playerTwoElo = playerTwoRow[1]
 	if (playerTwoElo == None):
-		c.execute('UPDATE players SET ELO=1200 WHERE user_id=?;', [playerTwoId])
 		playerTwoElo = 1200
 
 	playerOneRank = calculatePlayerRankFromElo(playerOneId, playerOneElo)
 	playerTwoRank = calculatePlayerRankFromElo(playerTwoId, playerTwoElo)
 
-	c.execute('INSERT INTO matches VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [timeStamp, playerOneId, playerOneScore, playerOneRank, playerOneElo, playerTwoId, playerTwoScore, playerTwoRank, playerTwoElo])
+	c.execute("SELECT * FROM players WHERE user_id=?",(message.sender_id,))
+
+	c.execute('INSERT INTO matches VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [timeStamp, playerOneName, playerOneScore, playerOneRank, playerOneElo, playerTwoName, playerTwoScore, playerTwoRank, playerTwoElo])
 	conn.commit()
 
 	if (playerTwoScore > playerOneScore):
@@ -70,7 +70,7 @@ def handleMatchInput(message):
 		winnerScore = playerOneScore
 		loserScore = playerTwoScore
 
-	return "text", winnerName + " won! The score was " + str(winnerScore) + " - " + str(loserScore) + ". Your score has been recorded for posterity"
+	return "text", "<@winnerName>" + " won! The score was " + str(winnerScore) + " - " + str(loserScore) + ". Your score has been recorded for posterity"
 
 
 def calculatePlayerRankFromElo(playerId, elo):
@@ -90,17 +90,11 @@ def sendRoomStatus(message):
 	f = open('status.jpg','rb')
 	return "file", {"comment":"Current status of the ping pong room:","filename":"Room Status","file":f}
 
-def getMatchHistory():
-	return null
-	
-
-# ("text", "message")
-# ("file", "fileName")
 def getMatchHistory(message):
 	limit = 10
 	textArray = message.text.split()
 	c.execute("SELECT * FROM players WHERE user_id=?",(message.sender_id,))
-	username = c.fetchOne()[1]
+	username = c.fetchone()[1]
 	if len(textArray) > 2:
 		return "text", "Invalid format. Format the history command as follows:\n\t`history [limit?]`\nType 'help' for more information."
 	elif len(textArray) == 2:
@@ -115,14 +109,15 @@ def getMatchHistory(message):
 				return "text", "'" + textArray[1] + "' is not a valid limit. Format the history command as follows:\n\t`history [limit?]`\nType 'help' for more information."
 	c.execute("SELECT * FROM matches WHERE playerOne=? OR playerTwo=? ORDER BY date DESC LIMIT ?",(username,username,limit))
 	results = c.fetchall()
+	if results == []:
+		return "text","Sorry, you have no previous games!"
 	table = BeautifulTable()
 	table.column_headers = ["Date", "Match", "Score", "Winner"]
 	wins = 0
 	for result in results:
-		match = Match((datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S.%f'),result[1],result[2],result[3],result[4]))
-		winner = result[1] if int(result[2]) > int(result[5]) else result[6]
-		table.append_row([datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d'),result[1] + " vs " + result[5], result[2] + " - " + result[6], winner])
+		winner = result[1] if int(result[2]) > int(result[6]) else result[5]
+		table.append_row([datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d'),result[1] + " vs " + result[5], str(result[2]) + " - " + str(result[6]), winner])
 		if winner == username:
 			wins +=1
-	title = str(int(float(wins)/float(len(results)) * 100)) + "% Win-Rate Over " + str(len(results)) + " Games"
-	return "text","`"+str(table)+"`"
+	title = str(int(float(wins)/float(len(results)) * 100)) + "% Win-Rate Over " + str(len(results)) + " Games\n"
+	return "text",title+"```"+str(table)+"```"
