@@ -50,6 +50,7 @@ if __name__ == "__main__":
 			users.append((datetime.now(),user["name"],user["id"],None))
 		c.executemany("INSERT OR IGNORE INTO players VALUES(?,?,?,?)",users)
 		conn.commit()
+		conn.close()
 		print('PongPal - Connected and Ready To Go!')
 		while(True):
 			for event in slack.rtm_read():
@@ -60,4 +61,5 @@ if __name__ == "__main__":
 			time.sleep(1)
 	else:
 		print("Connection failed. Invalid Slack token or bot ID?")
+		conn.close()
 

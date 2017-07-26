@@ -1,9 +1,12 @@
 """ Commands handled by the slack bot """
 from datetime import datetime
+<<<<<<< HEAD
 from init import Message, BOT_ID
 
 import logging
 import sqlite3
+import os,logging,sqlite3
+from beautifultable import BeautifulTable
 conn = sqlite3.connect('pingpong.db')
 c = conn.cursor()
 try:
@@ -87,7 +90,7 @@ def sendHelpOptions(message):
 	historyInfo = "*_history_* - Lists your match history, defaults to a list of 10. Takes an optional limit parameter as an integer or 'all'\n\t`history [limit?]`"
 	return 'text', helpInfo + statusInfo + matchInfo + historyInfo
 
-def sendRoomStatus():
+def sendRoomStatus(message):
 	camera.capture('status.jpg')
 	f = open('status.jpg','rb')
 	return "file", {"comment":"Current status of the ping pong room:","filename":"Room Status","file":f}
@@ -96,6 +99,35 @@ def getMatchHistory():
 	return null
 	
 
-
 # ("text", "message")
 # ("file", "fileName")
+def getMatchHistory(message):
+	limit = 10
+	textArray = message.text.split()
+	c.execute("SELECT * FROM players WHERE user_id=?",(message.sender_id,))
+	username = c.fetchOne()[1]
+	if len(textArray) > 2:
+		return "text", "Invalid format. Format the history command as follows:\n\t`history [limit?]`\nType 'help' for more information."
+	elif len(textArray) == 2:
+		try:
+			limit = int(textArray[1])
+			if limit < 1:
+				return "text", "'" + textArray[1] + "' is not a valid limit. Format the history command as follows:\n\t`history [limit?]`\nType 'help' for more information."
+		except ValueError:
+			if(textArray[1] == 'all'):
+				limit = -1
+			else:
+				return "text", "'" + textArray[1] + "' is not a valid limit. Format the history command as follows:\n\t`history [limit?]`\nType 'help' for more information."
+	c.execute("SELECT * FROM matches WHERE playerOne=? OR playerTwo=? ORDER BY date DESC LIMIT ?",(username,username,limit))
+	results = c.fetchall()
+	table = BeautifulTable()
+	table.column_headers = ["Date", "Match", "Score", "Winner"]
+	wins = 0
+	for result in results:
+		match = Match((datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S.%f'),result[1],result[2],result[3],result[4]))
+		winner = result[1] if int(result[2]) > int(result[5]) else result[6]
+		table.append_row([datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d'),result[1] + " vs " + result[5], result[2] + " - " + result[6], winner])
+		if winner == username:
+			wins +=1
+	title = str(int(float(wins)/float(len(results)) * 100)) + "% Win-Rate Over " + str(len(results)) + " Games"
+	return "text","`"+str(table)+"`"
