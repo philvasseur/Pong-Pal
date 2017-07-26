@@ -1,8 +1,7 @@
 """ Commands handled by the slack bot """
 from datetime import datetime
 
-import logging
-import sqlite3
+from init import Message
 import os,logging,sqlite3
 from beautifultable import BeautifulTable
 
@@ -13,7 +12,6 @@ try:
     camera = picamera.PiCamera()
 except ImportError:
     logging.warning(' Failing to import picamera. DO NOT USE STATUS COMMAND.')
-
 
 #message object has: channel to repond to, text of the command, user who sent the command
 def handleMatchInput(message):
