@@ -20,11 +20,11 @@ class Message(object):
 		self.isDM = self.channel and self.channel[0] == 'D'
 		self.isNewMessage = self.subtype == None and self.type == "message"
 
-def parseMessage(msg):
+def parseMessage(message):
 	commandMap = {"help":commands.sendHelpOptions,"match":commands.handleMatchInput,"status":commands.sendRoomStatus, "history":commands.getMatchHistory}
 	text = message.text
 	if len(text.split()) == 0:
-		sendMessage("Sorry, I didn't recognize your command. Type 'help' for a list of options.",message.channel)
+		sendMessage("Sorry, I didn't recognize your command. Type 'help' for a list of options.")
 		return
 	command = text.split()[0].lower()
 	if command in commandMap:
@@ -39,8 +39,8 @@ def parseMessage(msg):
 def uploadFile(data,channel):
 	slack.api_call("files.upload", initial_comment=data['comment'],filename=data['filename'], channels=channel, file= data['file'])
 
-def sendMessage(text,channel):
-	slack.api_call("chat.postMessage",channel=channel,text=text,as_user=True)
+def sendMessage(json,channel):
+	slack.api_call("chat.postMessage",channel=channel,text=json,as_user=True,link_names=1,parse='full')
 
 if __name__ == "__main__":
 	if slack.rtm_connect():
