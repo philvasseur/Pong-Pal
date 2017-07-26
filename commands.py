@@ -1,12 +1,11 @@
 """ Commands handled by the slack bot """
 from datetime import datetime
-<<<<<<< HEAD
-from init import Message, BOT_ID
 
 import logging
 import sqlite3
 import os,logging,sqlite3
 from beautifultable import BeautifulTable
+
 conn = sqlite3.connect('pingpong.db')
 c = conn.cursor()
 try:
@@ -18,19 +17,23 @@ except ImportError:
 
 #message object has: channel to repond to, text of the command, user who sent the command
 def handleMatchInput(message):
-	correctFormat = "match [your score] [opponent] [opponent score]"
+	correctFormat = "match [myScore] [@opponent] [opponentScore]"
 	commandArgs = message.text.split()
 	if len(commandArgs) != 4:
 		return "text", "This is not a valid command! PLEASE use this format: " + correctFormat
 
-	playerOneId = message.sender_id.strip('<@>')
+	playerOneId = message.sender_id
 	playerOneScore = commandArgs[1]
-	playerTwoId = commandArgs[2].strip('<@>')
+	playerTwoId = commandArgs[2]
+	if (playerTwoId[:2] != '<@'):
+		return "text", "Invalid command. Please tag your opponent using the '@' symbol."
+	playerTwoId = playerTwoId.strip('<@>')
 	playerTwoScore = commandArgs[3]
 
+	from init import BOT_ID
 	if (playerOneId == playerTwoId):
 		return "text", "You can't play against yourself, you moron!!"
-	elif (playerOneId == BOT_ID):
+	elif (playerTwoId == BOT_ID):
 		return "text", "You can't play against THE PongPal. You'd lose every time if you tried anyhow"
 	
 	if (not playerOneScore.isdigit() or not playerTwoScore.isdigit()):
@@ -46,24 +49,24 @@ def handleMatchInput(message):
 	playerOneRow = c.fetchone()
 	playerOneName = playerOneRow[0]
 	playerOneElo = playerOneRow[1]
-	if (playerOneElo == None):
-		c.execute('UPDATE players SET ELO=1200 WHERE user_id=?;', [playerOneId])
+	if playerOneElo == None:
 		playerOneElo = 1200
-
 	c.execute('SELECT name, ELO FROM players WHERE user_id=?;', [playerTwoId])
-	if (playerOneRow == None):
-		return "text", "You entered an invalid opponent...awkward"
 	playerTwoRow = c.fetchone()
+	if (playerTwoRow == None):
+		return "text", "You entered an invalid opponent...awkward"
 	playerTwoName = playerTwoRow[0]
 	playerTwoElo = playerTwoRow[1]
 	if (playerTwoElo == None):
-		c.execute('UPDATE players SET ELO=1200 WHERE user_id=?;', [playerTwoId])
 		playerTwoElo = 1200
 
 	playerOneRank = calculatePlayerRankFromElo(playerOneId, playerOneElo)
 	playerTwoRank = calculatePlayerRankFromElo(playerTwoId, playerTwoElo)
 
-	c.execute('INSERT INTO matches VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [timeStamp, playerOneId, playerOneScore, playerOneRank, playerOneElo, playerTwoId, playerTwoScore, playerTwoRank, playerTwoElo])
+	c.execute('INSERT INTO matches VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [timeStamp, playerOneName, playerOneScore, playerOneRank, playerOneElo, playerTwoName, playerTwoScore, playerTwoRank, playerTwoElo])
+	""" calc new Elos here """
+	c.execute('UPDATE players SET ELO=1200 WHERE user_id=?;', [playerOneId])
+	c.execute('UPDATE players SET ELO=1200 WHERE user_id=?;', [playerTwoId])
 	conn.commit()
 
 	if (playerTwoScore > playerOneScore):

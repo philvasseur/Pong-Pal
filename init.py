@@ -42,6 +42,9 @@ def uploadFile(data,channel):
 def sendMessage(text,channel):
 	slack.server.send_to_websocket({"type": "message", "channel": channel, "markdwn": True, "text": text})
 
+def getBotId():
+	return BOT_ID
+
 if __name__ == "__main__":
 	if slack.rtm_connect():
 		BOT_ID = slack.api_call("auth.test").get('user_id')
@@ -62,4 +65,5 @@ if __name__ == "__main__":
 	else:
 		print("Connection failed. Invalid Slack token or bot ID?")
 		conn.close()
+
 
