@@ -61,6 +61,7 @@ def handleMatchInput(message):
 	playerTwoRank = calculatePlayerRankFromElo(playerTwoId, playerTwoElo)
 
 	c.execute('INSERT INTO matches VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [timeStamp, playerOneId, playerOneScore, playerOneRank, playerOneElo, playerTwoId, playerTwoScore, playerTwoRank, playerTwoElo])
+	conn.commit()
 
 	if (playerTwoScore > playerOneScore):
 		winnerName = playerTwoName
@@ -76,20 +77,20 @@ def handleMatchInput(message):
 
 def calculatePlayerRankFromElo(playerId, elo):
 	c.execute('SELECT COUNT(name) FROM players WHERE ELO>?;', [elo])
-	rank = c.fetchone()[0]
-	return rank
+	rank = c.fetchone()[0] 
+	return rank + 1
 
 def sendHelpOptions(message):
 	helpInfo = "Commands:\n*_help_* - Lists these commands here :table_tennis_paddle_and_ball:\n"
 	statusInfo = "*_status_* - Sends you a picture of the current status of the ping-pong room\n"
 	matchInfo = "*_match_* - Records your match and updates your overall ranking\n\t`match [myScore] [@opponent] [opponentScore]`\n"
 	historyInfo = "*_history_* - Lists your match history, defaults to a list of 10. Takes an optional limit parameter as an integer or 'all'\n\t`history [limit?]`"
-	return 'text',helpInfo + statusInfo + matchInfo + historyInfo
+	return 'text', helpInfo + statusInfo + matchInfo + historyInfo
 
 def sendRoomStatus():
 	camera.capture('status.jpg')
 	f = open('status.jpg','rb')
-	return "file",{"comment":"Current status of the ping pong room:","filename":"Room Status","file":f}
+	return "file", {"comment":"Current status of the ping pong room:","filename":"Room Status","file":f}
 
 def getMatchHistory():
 	return null
