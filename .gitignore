@@ -108,3 +108,4 @@ ENV/
 *.png
 
 config.py
+.DS_Store
