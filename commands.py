@@ -1,7 +1,6 @@
 """ Commands handled by the slack bot """
 from datetime import datetime
 
-
 import sqlite3
 conn = sqlite3.connect('pingpong.db')
 c = conn.cursor()
@@ -66,8 +65,12 @@ def calculatePlayerRankFromElo(playerId, elo):
 	rank = c.fetchone()
 	return rank
 
-def sendHelpOptions():
-	return null
+def sendHelpOptions(message):
+	helpInfo = "Commands:\n'help' -\n\tLists these commands here :table_tennis_paddle_and_ball:\n"
+	statusInfo = "'status' -\n\tSends you a picture of the current status of the ping-pong room\n"
+	matchInfo = "'match' -\n\tRecords your match and updates your overall ranking\n\tUsage - match [myScore] [@opponent] [opponentScore]\n"
+	historyInfo = "'history' -\n\tLists your match history, defaults to a list of 10. Takes an optional limit parameter as an integer or 'all'\n\tUsage - history [limit]?"
+	return 'text',helpInfo + statusInfo + matchInfo + historyInfo
 
 def sendRoomStatus():
 	return null
