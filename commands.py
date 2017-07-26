@@ -20,7 +20,7 @@ def handleMatchInput(message):
 
 	if (playerOneId == playerTwoId):
 		return "text", "You can't play against yourself, you moron!!"
-	elif (playerOneId == getBotId()):
+	elif (playerOneId == bot_id):
 		return "text", "You can't play against THE PongPal. You'd lose every time if you tried anyhow"
 	
 	if (not playerOneScore.isdigit() or not playerTwoScore.isdigit()):
@@ -58,7 +58,7 @@ def handleMatchInput(message):
 		winnerScore = playerOneScore
 		loserScore = playerTwoScore
 
-	return "text", winnerName + "won! The score was " + winnerScore + " - " + loserScore
+	return "text", winnerName + "won! The score was " + winnerScore + " - " + loserScore + ". Your score has been recorded for posterity"
 
 
 def calculatePlayerRankFromElo(playerId, elo):
@@ -74,6 +74,9 @@ def sendRoomStatus():
 
 def getMatchHistory():
 	return null
+
+def main():
+	
 
 
 # ("text", "message")
