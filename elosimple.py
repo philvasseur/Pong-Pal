@@ -60,22 +60,22 @@ def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
     newB = baseB
 
     # Output for testing
-    print "baseA " + str(baseA)
-    print "baseB " + str(baseB)
-    print "spanA " + str(spanA)
-    print "spanB " + str(spanB)
-    print "stepA " + str(stepA)
-    print "stepB " + str(stepB)
-    print "expA " + str(expA)
-    print "expB " + str(expB)
-    print "wonA " + str(wonA)
-    print "wonB " + str(wonB)
-    print "lower score: " + str(score)
-    print "score diff " + str(diff)
-    print "oldA " + str(eloA)
-    print "newA, newA2: " + str(newA) + ", " + str(newA3)
-    print "oldB " + str(eloB)
-    print "newB, newB2: " + str(newB) + ", " + str(newB3)
+    # print "baseA " + str(baseA)
+    # print "baseB " + str(baseB)
+    # print "spanA " + str(spanA)
+    # print "spanB " + str(spanB)
+    # print "stepA " + str(stepA)
+    # print "stepB " + str(stepB)
+    # print "expA " + str(expA)
+    # print "expB " + str(expB)
+    # print "wonA " + str(wonA)
+    # print "wonB " + str(wonB)
+    # print "lower score: " + str(score)
+    # print "score diff " + str(diff)
+    # print "oldA " + str(eloA)
+    # print "newA, newA2: " + str(newA) + ", " + str(newA3)
+    # print "oldB " + str(eloB)
+    # print "newB, newB2: " + str(newB) + ", " + str(newB3)
 
     return newA, newB 
 
