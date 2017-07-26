@@ -1,5 +1,6 @@
 """ Commands handled by the slack bot """
 from datetime import datetime
+from init import Message, BOT_ID
 
 import sqlite3
 conn = sqlite3.connect('pingpong.db')
@@ -8,7 +9,7 @@ c = conn.cursor()
 #message object has: channel to repond to, text of the command, user who sent the command
 def handleMatchInput(message):
 	correctFormat = "match [your score] [opponent] [opponent score]"
-	commandArgs = message.text.split
+	commandArgs = message.text.split()
 	if len(commandArgs) != 4:
 		return "text", "This is not a valid command! PLEASE use this format: " + correctFormat
 
@@ -19,7 +20,7 @@ def handleMatchInput(message):
 
 	if (playerOneId == playerTwoId):
 		return "text", "You can't play against yourself, you moron!!"
-	elif (playerOneId == bot_id):
+	elif (playerOneId == BOT_ID):
 		return "text", "You can't play against THE PongPal. You'd lose every time if you tried anyhow"
 	
 	if (not playerOneScore.isdigit() or not playerTwoScore.isdigit()):
@@ -29,24 +30,30 @@ def handleMatchInput(message):
 		playerTwoScore = int(playerTwoScore)
 	if (playerOneScore == playerTwoScore):
 		return "text", "KEEP PLAYING. no ties allowed"
-	timeStamp = datetime.now().date
+	timeStamp = datetime.now()
 
-	c.execute('SELECT name, ELO FROM players WHERE user_id=?;', playerOneId)
+	c.execute('SELECT name, ELO FROM players WHERE user_id=?;', [playerOneId])
 	playerOneRow = c.fetchone()
-	playerOneElo = playerOneRow["ELO"]
-	playerOneName = playerOneRow["name"]
+	playerOneName = playerOneRow[0]
+	playerOneElo = playerOneRow[1]
+	if (playerOneElo == None):
+		c.execute('UPDATE players SET ELO=1200 WHERE user_id=?;', [playerOneId])
+		playerOneElo = 1200
 
-	c.execute('SELECT name, ELO FROM players WHERE user_id=?;', playerTwoId)
+	c.execute('SELECT name, ELO FROM players WHERE user_id=?;', [playerTwoId])
 	if (playerOneRow == None):
 		return "text", "You entered an invalid opponent...awkward"
 	playerTwoRow = c.fetchone()
-	playerTwoElo = playerTwoRow["ELO"]
-	playerTwoName = playerTwoRow["name"]
+	playerTwoName = playerTwoRow[0]
+	playerTwoElo = playerTwoRow[1]
+	if (playerTwoElo == None):
+		c.execute('UPDATE players SET ELO=1200 WHERE user_id=?;', [playerTwoId])
+		playerTwoElo = 1200
 
 	playerOneRank = calculatePlayerRankFromElo(playerOneId, playerOneElo)
 	playerTwoRank = calculatePlayerRankFromElo(playerTwoId, playerTwoElo)
 
-	c.execute('INSERT INTO matches VALUES (?, ?, ?, ?, ?, ?, ?, ?)', timeStamp, playerOneId, playerOneScore, playerOneRank, playerOneElo, playerTwoId, playerTwoScore, playerTwoRank, playerTwoElo)
+	c.execute('INSERT INTO matches VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [timeStamp, playerOneId, playerOneScore, playerOneRank, playerOneElo, playerTwoId, playerTwoScore, playerTwoRank, playerTwoElo])
 
 	if (playerTwoScore > playerOneScore):
 		winnerName = playerTwoName
@@ -57,12 +64,12 @@ def handleMatchInput(message):
 		winnerScore = playerOneScore
 		loserScore = playerTwoScore
 
-	return "text", winnerName + "won! The score was " + winnerScore + " - " + loserScore + ". Your score has been recorded for posterity"
+	return "text", winnerName + " won! The score was " + str(winnerScore) + " - " + str(loserScore) + ". Your score has been recorded for posterity"
 
 
 def calculatePlayerRankFromElo(playerId, elo):
-	c.execute('SELECT COUNT(name) FROM players ELO > elo;')
-	rank = c.fetchone()
+	c.execute('SELECT COUNT(name) FROM players WHERE ELO>?;', [elo])
+	rank = c.fetchone()[0]
 	return rank
 
 def sendHelpOptions(message):
@@ -70,15 +77,13 @@ def sendHelpOptions(message):
 	statusInfo = "'status' -\n\tSends you a picture of the current status of the ping-pong room\n"
 	matchInfo = "'match' -\n\tRecords your match and updates your overall ranking\n\tUsage - match [myScore] [@opponent] [opponentScore]\n"
 	historyInfo = "'history' -\n\tLists your match history, defaults to a list of 10. Takes an optional limit parameter as an integer or 'all'\n\tUsage - history [limit]?"
-	return 'text',helpInfo + statusInfo + matchInfo + historyInfo
+	return 'text', helpInfo + statusInfo + matchInfo + historyInfo
 
 def sendRoomStatus():
 	return null
 
 def getMatchHistory():
 	return null
-
-def main():
 	
 
 
