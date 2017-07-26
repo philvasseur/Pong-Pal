@@ -106,3 +106,5 @@ ENV/
 # Pictures
 *.jpg
 *.png
+
+config.py
