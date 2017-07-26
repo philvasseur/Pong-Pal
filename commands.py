@@ -2,9 +2,16 @@
 from datetime import datetime
 from init import Message, BOT_ID
 
+import logging
 import sqlite3
 conn = sqlite3.connect('pingpong.db')
 c = conn.cursor()
+try:
+    import picamera
+    camera = picamera.PiCamera()
+except ImportError:
+    logging.warning(' Failing to import picamera. DO NOT USE STATUS COMMAND.')
+
 
 #message object has: channel to repond to, text of the command, user who sent the command
 def handleMatchInput(message):
@@ -73,14 +80,16 @@ def calculatePlayerRankFromElo(playerId, elo):
 	return rank
 
 def sendHelpOptions(message):
-	helpInfo = "Commands:\n'help' -\n\tLists these commands here :table_tennis_paddle_and_ball:\n"
-	statusInfo = "'status' -\n\tSends you a picture of the current status of the ping-pong room\n"
-	matchInfo = "'match' -\n\tRecords your match and updates your overall ranking\n\tUsage - match [myScore] [@opponent] [opponentScore]\n"
-	historyInfo = "'history' -\n\tLists your match history, defaults to a list of 10. Takes an optional limit parameter as an integer or 'all'\n\tUsage - history [limit]?"
-	return 'text', helpInfo + statusInfo + matchInfo + historyInfo
+	helpInfo = "Commands:\n*_help_* - Lists these commands here :table_tennis_paddle_and_ball:\n"
+	statusInfo = "*_status_* - Sends you a picture of the current status of the ping-pong room\n"
+	matchInfo = "*_match_* - Records your match and updates your overall ranking\n\t`match [myScore] [@opponent] [opponentScore]`\n"
+	historyInfo = "*_history_* - Lists your match history, defaults to a list of 10. Takes an optional limit parameter as an integer or 'all'\n\t`history [limit?]`"
+	return 'text',helpInfo + statusInfo + matchInfo + historyInfo
 
 def sendRoomStatus():
-	return null
+	camera.capture('status.jpg')
+	f = open('status.jpg','rb')
+	return "file",{"comment":"Current status of the ping pong room:","filename":"Room Status","file":f}
 
 def getMatchHistory():
 	return null

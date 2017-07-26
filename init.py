@@ -39,8 +39,8 @@ def parseMessage(message):
 def uploadFile(data,channel):
 	slack.api_call("files.upload", initial_comment=data['comment'],filename=data['filename'], channels=channel, file= data['file'])
 
-def sendMessage(json,channel):
-	slack.api_call("chat.postMessage",channel=channel,text=json,as_user=True,link_names=1,parse='full')
+def sendMessage(text,channel):
+	slack.server.send_to_websocket({"type": "message", "channel": channel, "markdwn": True, "text": text})
 
 if __name__ == "__main__":
 	if slack.rtm_connect():
