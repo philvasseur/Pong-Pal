@@ -1,5 +1,7 @@
 # Modified ELO algorithm implemented by Stephen Slater on 7/26/17
+# Considers game point differential and ELO percentile when calculating new ELO
 # The function expected() was taken from https://github.com/rshk/elo/blob/master/elo.py
+# See https://en.wikipedia.org/wiki/Elo_rating_system
 
 from __future__ import division
 
@@ -41,7 +43,7 @@ def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
     spanA = abs(baseA - eloA) / 3
     spanB = abs(baseB - eloB) / 3
 
-    # Step is the number of ELO points gained per ping-pong point
+    # Step is the number of ELO points gained/lost per ping-pong point
     stepA = spanA / (0.5 * scoreMax)
     stepB = spanB / (0.5 * scoreMax)
 
