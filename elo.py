@@ -14,7 +14,7 @@ def expected(eloA, eloB):
     """
     return 1 / (1 + 10 ** ((eloB - eloA) / 400))
 
-# Returns the two new elo values in a tuple: (newA, newB)
+# Returns the two new Elo values in a tuple: (newA, newB)
 def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
     """
     Calculate the new Elo rating for a player
