@@ -153,7 +153,7 @@ def getPlayerStats(message):
 		scoreOne = result[1]
 		playerTwo = result[2]
 		scoreTwo = result[3]
-		winner = playerOne if scoreOne > scoreTwo else scoreTwo
+		winner = playerOne if scoreOne > scoreTwo else playerTwo
 		if(winner == username):
 			wins+=1
 		else:
