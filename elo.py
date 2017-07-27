@@ -14,7 +14,7 @@ def expected(eloA, eloB):
     """
     return 1 / (1 + 10 ** ((eloB - eloA) / 400))
 
-# Returns the two new elo values in a tuple: (newA, newB)
+# Returns the two new Elo values in a tuple: (newA, newB)
 def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
     """
     Calculate the new Elo rating for a player
@@ -25,6 +25,9 @@ def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
     :param k: The k-factor for Elo, used as a scalar (default: 32)
     :param eloMax: The max rating in the company (default: 3000)
     """
+
+    if eloMax < 1800:
+        eloMax = 3000
 
     # Calculated expected score of this match
     expA = expected(eloA, eloB)

@@ -1,9 +1,9 @@
 """ Commands handled by the slack bot """
 from datetime import datetime
 from init import Message, BOT_ID
-import os,logging,sqlite3,elosimple
+import os,logging,sqlite3,elo
 from beautifultable import BeautifulTable
-from elosimple import elo
+from elo import elo
 
 conn = sqlite3.connect('pingpong.db')
 c = conn.cursor()
