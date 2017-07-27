@@ -22,8 +22,8 @@ def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
     :param eloB: The previous Elo rating for player B
     :param scoreA: Score of Player A
     :param scoreB: Score of Player B
-    :param k: The k-factor for Elo (default: 32)
-    :param eloMax: The max rating achievable
+    :param k: The k-factor for Elo, used as a scalar (default: 32)
+    :param eloMax: The max rating in the company (default: 3000)
     """
 
     # Calculated expected score of this match
