@@ -21,7 +21,7 @@ class Message(object):
 		self.isNewMessage = self.subtype == None and self.type == "message"
 
 def parseMessage(message):
-	commandMap = {"help":commands.sendHelpOptions,"match":commands.handleMatchInput,"status":commands.sendRoomStatus, "history":commands.getMatchHistory,'stats':commands.getPlayerStats}
+	commandMap = {"help":commands.sendHelpOptions,"match":commands.handleMatchInput,"status":commands.sendRoomStatus, "history":commands.getMatchHistory,'stats':commands.getPlayerStats, "confirm":commands.confirmMatch}
 	text = message.text
 	if len(text.split()) == 0:
 		sendMessage("Sorry, I didn't recognize your command. Type 'help' for a list of options.")
@@ -41,6 +41,14 @@ def uploadFile(data,channel):
 
 def sendMessage(text,channel):
 	slack.server.send_to_websocket({"type": "message", "channel": channel, "markdwn": True, "text": text})
+
+def sendConfirmation(text, opponentId):
+	slack.api_call(
+		"chat.postMessage",
+		channel=opponentId,
+		as_user = True,
+		text=text
+	)
 
 def getBotId():
 	return BOT_ID
