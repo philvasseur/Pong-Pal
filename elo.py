@@ -26,6 +26,9 @@ def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
     :param eloMax: The max rating in the company (default: 3000)
     """
 
+    if eloMax < 1800:
+        eloMax = 3000
+
     # Calculated expected score of this match
     expA = expected(eloA, eloB)
     expB = 1 - expA
