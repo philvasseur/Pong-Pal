@@ -4,6 +4,7 @@ from datetime import datetime
 from init import Message
 import os,logging,sqlite3
 from beautifultable import BeautifulTable
+from elosimple import elo
 
 conn = sqlite3.connect('pingpong.db')
 c = conn.cursor()
@@ -28,11 +29,10 @@ def handleMatchInput(message):
 	playerTwoId = playerTwoId.strip('<@>')
 	playerTwoScore = commandArgs[3]
 
-	from init import BOT_ID
 	if (playerOneId == playerTwoId):
 		return "text", "You can't play against yourself, you moron!!"
-	elif (playerTwoId == BOT_ID):
-		return "text", "You can't play against THE PongPal. You'd lose every time if you tried anyhow"
+	elif (playerTwoId == message.receiver_id):
+		return "text", "You can't play against THE PongPal. You'd lose every time even if you tried."
 	
 	if (not playerOneScore.isdigit() or not playerTwoScore.isdigit()):
 		return "text", "The scores have to be NUMBERS obviously"
@@ -47,24 +47,31 @@ def handleMatchInput(message):
 	playerOneRow = c.fetchone()
 	playerOneName = playerOneRow[0]
 	playerOneElo = playerOneRow[1]
+
 	if playerOneElo == None:
+		playerOneRank = None
 		playerOneElo = 1200
+	else: 
+		playerOneRank = calculatePlayerRankFromElo(playerOneId, playerOneElo)
+
 	c.execute('SELECT name, ELO FROM players WHERE user_id=?;', [playerTwoId])
 	playerTwoRow = c.fetchone()
 	if (playerTwoRow == None):
 		return "text", "You entered an invalid opponent...awkward"
 	playerTwoName = playerTwoRow[0]
 	playerTwoElo = playerTwoRow[1]
+
 	if (playerTwoElo == None):
 		playerTwoElo = 1200
-
-	playerOneRank = calculatePlayerRankFromElo(playerOneId, playerOneElo)
-	playerTwoRank = calculatePlayerRankFromElo(playerTwoId, playerTwoElo)
+		playerTwoRank = None
+	else:
+		playerTwoRank = calculatePlayerRankFromElo(playerTwoId, playerTwoElo)
 
 	c.execute('INSERT INTO matches VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [timeStamp, playerOneName, playerOneScore, playerOneRank, playerOneElo, playerTwoName, playerTwoScore, playerTwoRank, playerTwoElo])
 	""" calc new Elos here """
-	c.execute('UPDATE players SET ELO=1200 WHERE user_id=?;', [playerOneId])
-	c.execute('UPDATE players SET ELO=1200 WHERE user_id=?;', [playerTwoId])
+	newEloOne, newEloTwo = elo(playerOneElo, playerTwoElo, playerOneScore, playerTwoScore)
+	c.execute('UPDATE players SET ELO=? WHERE user_id=?;', [newEloOne, playerOneId])
+	c.execute('UPDATE players SET ELO=? WHERE user_id=?;', [newEloTwo, playerTwoId])
 	conn.commit()
 
 	if (playerTwoScore > playerOneScore):
@@ -76,7 +83,7 @@ def handleMatchInput(message):
 		winnerScore = playerOneScore
 		loserScore = playerTwoScore
 
-	return "text", winnerName + " won! The score was " + str(winnerScore) + " - " + str(loserScore) + ". Your score has been recorded for posterity"
+	return "text", "<@" + winnerName + ">" + " won! The score was " + str(winnerScore) + " - " + str(loserScore) + ". Your score has been recorded for posterity."
 
 
 def calculatePlayerRankFromElo(playerId, elo):
