@@ -4,6 +4,8 @@ from init import Message, BOT_ID
 import os,logging,sqlite3,elo
 from beautifultable import BeautifulTable
 from elo import elo
+import init
+from init import sendMessage, sendConfirmation
 
 conn = sqlite3.connect('pingpong.db')
 c = conn.cursor()
@@ -12,6 +14,45 @@ try:
 	camera = picamera.PiCamera()
 except ImportError:
 	logging.warning(' Failing to import picamera. DO NOT USE STATUS COMMAND.')
+
+def confirmMatch(message):
+	correctFormat = "confirm [matchNumber]"
+	commandArgs = message.text.split()
+	if len(commandArgs) != 2:
+		return "text", "This is not a valid command! PLEASE use this format: " + correctFormat
+	match = commandArgs[1]
+	c.execute('SELECT confirmPermissions, playerOne, playerTwo, scoreOne, scoreTwo FROM matches WHERE matchNumber=?', [match])
+	players = c.fetchall()
+	playerWithPermission = players[0][0]
+	if playerWithPermission != message.sender_id:
+		return "text", "Sorry! Only <@" + playerWithPermission + "> can confirm match " + str(match) + "."
+	playerOne = players[0][1]
+	playerTwo = players[0][2]
+	playerOneScore = players[0][3]
+	playerTwoScore = players[0][4]
+	c.execute('SELECT user_id, ELO FROM players WHERE name=?', [playerOne])
+	playerOneIdElo = c.fetchall()[0]
+	playerOneId = playerOneIdElo[0]
+	playerOneElo = playerOneIdElo[1]
+	c.execute('SELECT user_id, ELO FROM players WHERE name=?', [playerTwo])
+	playerTwoIdElo = c.fetchall()[0]
+	playerTwoId = playerTwoIdElo[0]
+	playerTwoElo = playerTwoIdElo[1]
+	c.execute('UPDATE matches SET confirmed=? WHERE matchNumber=?', [1, match])
+
+	# If playerOne confirmed the results, then send message to playerTwo's channel, and vice versa
+	if playerOneId == message.sender_id:
+		sendConfirmation("Hello! Your opponent <@" + playerOne + "> confirmed the results of match number " + str(match) + ".", playerTwoId)
+	else:
+		sendConfirmation("Hello! Your opponent <@" + playerTwo + "> confirmed the results of match number " + str(match) + ".", playerOneId)
+
+	""" calc new Elos here """
+	newEloOne, newEloTwo = elo(playerOneElo, playerTwoElo, playerOneScore, playerTwoScore)
+	c.execute('UPDATE players SET ELO=? WHERE user_id=?;', [newEloOne, playerOneId])
+	c.execute('UPDATE players SET ELO=? WHERE user_id=?;', [newEloTwo, playerTwoId])
+	conn.commit()
+
+	return "text", "Thanks! I confirmed match number " + str(match) + " and updated player rankings."
 
 #message object has: channel to repond to, text of the command, user who sent the command
 def handleMatchInput(message):
@@ -66,11 +107,9 @@ def handleMatchInput(message):
 	else:
 		playerTwoRank = calculatePlayerRankFromElo(playerTwoId, playerTwoElo)
 
-	c.execute('INSERT INTO matches VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [timeStamp, playerOneName, playerOneScore, playerOneRank, playerOneElo, playerTwoName, playerTwoScore, playerTwoRank, playerTwoElo])
-	""" calc new Elos here """
-	newEloOne, newEloTwo = elo(playerOneElo, playerTwoElo, playerOneScore, playerTwoScore)
-	c.execute('UPDATE players SET ELO=? WHERE user_id=?;', [newEloOne, playerOneId])
-	c.execute('UPDATE players SET ELO=? WHERE user_id=?;', [newEloTwo, playerTwoId])
+	c.execute('INSERT INTO matches (date, confirmPermissions, confirmed, playerOne, scoreOne, rankingOne, ELOOne, playerTwo, scoreTwo, rankingTwo, ELOTwo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [timeStamp, playerTwoName, 0, playerOneName, playerOneScore, playerOneRank, playerOneElo, playerTwoName, playerTwoScore, playerTwoRank, playerTwoElo])
+	c.execute('SELECT matchNumber FROM matches WHERE date=?', [timeStamp])
+	matchNum = c.fetchone()[0]
 	conn.commit()
 
 	if (playerTwoScore > playerOneScore):
@@ -82,7 +121,9 @@ def handleMatchInput(message):
 		winnerScore = playerOneScore
 		loserScore = playerTwoScore
 
-	return "text", "<@" + winnerName + ">" + " won! The score was " + str(winnerScore) + " - " + str(loserScore) + ". Your score has been recorded for posterity."
+	result = "<@" + winnerName + ">" + " won! The score was " + str(winnerScore) + " - " + str(loserScore) + "."
+	sendConfirmation("Congrats on another match! Type `confirm " + str(matchNum) + "` to confirm the result: " + result, playerTwoId)
+	return "text", result + " Your score is awaiting confirmation from your opponent."
 
 def calculatePlayerRankFromElo(playerId, elo):
 	c.execute('SELECT COUNT(name) FROM players WHERE ELO>?;', [elo])
@@ -140,7 +181,7 @@ def getPlayerStats(message):
 	playerInfo = c.fetchone()
 	username = playerInfo[0]
 	ELO = playerInfo[1]
-	c.execute("SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE playerOne=? OR playerTwo=?",(username,username))
+	c.execute("SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE confirmed=? AND (playerOne=? OR playerTwo=?)",(1,username,username))
 	results = c.fetchall()
 	print(results)
 	if results == []:
