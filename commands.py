@@ -47,10 +47,7 @@ def handleMatchInput(message):
 	playerOneElo = playerOneRow[1]
 
 	if playerOneElo == None:
-		playerOneRank = None
 		playerOneElo = 1200
-	else: 
-		playerOneRank = calculatePlayerRank(playerOneName)
 
 	c.execute('SELECT name, ELO FROM players WHERE user_id=?;', [playerTwoId])
 	playerTwoRow = c.fetchone()
@@ -61,14 +58,14 @@ def handleMatchInput(message):
 
 	if (playerTwoElo == None):
 		playerTwoElo = 1200
-		playerTwoRank = None
-	else:
-		playerTwoRank = calculatePlayerRank(playerTwoName)
-
-	c.execute('INSERT INTO matches VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [timeStamp, playerOneName, playerOneScore, playerOneRank, playerOneElo, playerTwoName, playerTwoScore, playerTwoRank, playerTwoElo])
+	
 	newEloOne, newEloTwo = elo(playerOneElo, playerTwoElo, playerOneScore, playerTwoScore)
+
 	c.execute('UPDATE players SET ELO=? WHERE user_id=?;', [newEloOne, playerOneId])
 	c.execute('UPDATE players SET ELO=? WHERE user_id=?;', [newEloTwo, playerTwoId])
+	playerOneRank = calculatePlayerRank(playerOneName)
+	playerTwoRank = calculatePlayerRank(playerTwoName)
+	c.execute('INSERT INTO matches VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [timeStamp, playerOneName, playerOneScore, playerOneRank, newEloOne, playerTwoName, playerTwoScore, playerTwoRank, newEloTwo])
 	conn.commit()
 
 	if (playerTwoScore > playerOneScore):
@@ -122,11 +119,11 @@ def getMatchHistory(message):
 	if results == []:
 		return "text","Sorry, you have no previous matches!"
 	table = BeautifulTable()
-	table.column_headers = ["Date", "Match", "Score", "Winner"]
+	table.column_headers = ["Date", "Player Names", "Score", "Winner","Post Match Elo"]
 	wins = 0
 	for result in results:
 		winner = result[1] if int(result[2]) > int(result[6]) else result[5]
-		table.append_row([datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d'),result[1] + " vs " + result[5], str(result[2]) + " - " + str(result[6]), winner])
+		table.append_row([datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d'),result[1] + " vs " + result[5], str(result[2]) + " - " + str(result[6]), winner, str(int(result[4])) + " - " + str(int(result[8]))])
 		if winner == username:
 			wins +=1
 	title = str(int(float(wins)/float(len(results)) * 100)) + "% Win-Rate Over " + str(len(results)) + " Games\n"
