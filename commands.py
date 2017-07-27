@@ -1,7 +1,7 @@
 """ Commands handled by the slack bot """
 from datetime import datetime
 from init import Message, BOT_ID
-import os,logging,sqlite3,elosimple
+import os,logging,sqlite3,elo
 from beautifultable import BeautifulTable
 from elo import elo
 
