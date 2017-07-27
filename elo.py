@@ -9,8 +9,8 @@ def expected(eloA, eloB):
     """
     Calculate expected score of A in a match against B
     Values are in the range [0, 1], where 1 represents 100% expected win
-    :param A: Elo rating for player A
-    :param B: Elo rating for player B
+    :param eloA: Elo rating for player A
+    :param eloB: Elo rating for player B
     """
     return 1 / (1 + 10 ** ((eloB - eloA) / 400))
 
@@ -20,10 +20,10 @@ def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
     Calculate the new Elo rating for a player
     :param eloA: The previous Elo rating for player A
     :param eloB: The previous Elo rating for player B
-    :scoreA: Score of Player A
-    :scoreB: Score of Player B
+    :param scoreA: Score of Player A
+    :param scoreB: Score of Player B
     :param k: The k-factor for Elo (default: 32)
-    :eloMax: The max rating achievable
+    :param eloMax: The max rating achievable
     """
 
     # Calculated expected score of this match
