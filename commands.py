@@ -3,29 +3,34 @@ from datetime import datetime
 from init import Message, BOT_ID
 import os,logging,sqlite3,elosimple
 from beautifultable import BeautifulTable
+
 conn = sqlite3.connect('pingpong.db')
 c = conn.cursor()
 try:
-    import picamera
-    camera = picamera.PiCamera()
+	import picamera
+	camera = picamera.PiCamera()
 except ImportError:
-    logging.warning(' Failing to import picamera. DO NOT USE STATUS COMMAND.')
+	logging.warning(' Failing to import picamera. DO NOT USE STATUS COMMAND.')
 
 #message object has: channel to repond to, text of the command, user who sent the command
 def handleMatchInput(message):
-	correctFormat = "match [your score] [opponent] [opponent score]"
+	correctFormat = "match [myScore] [@opponent] [opponentScore]"
 	commandArgs = message.text.split()
 	if len(commandArgs) != 4:
 		return "text", "This is not a valid command! PLEASE use this format: " + correctFormat
 
-	playerOneId = message.sender_id.strip('<@>')
+	playerOneId = message.sender_id
 	playerOneScore = commandArgs[1]
-	playerTwoId = commandArgs[2].strip('<@>')
+	playerTwoId = commandArgs[2]
+	if (playerTwoId[:2] != '<@'):
+		return "text", "Invalid command. Please tag your opponent using the '@' symbol."
+	playerTwoId = playerTwoId.strip('<@>')
 	playerTwoScore = commandArgs[3]
 
+	from init import BOT_ID
 	if (playerOneId == playerTwoId):
 		return "text", "You can't play against yourself, you moron!!"
-	elif (playerOneId == BOT_ID):
+	elif (playerTwoId == BOT_ID):
 		return "text", "You can't play against THE PongPal. You'd lose every time if you tried anyhow"
 	
 	if (not playerOneScore.isdigit() or not playerTwoScore.isdigit()):
@@ -41,13 +46,12 @@ def handleMatchInput(message):
 	playerOneRow = c.fetchone()
 	playerOneName = playerOneRow[0]
 	playerOneElo = playerOneRow[1]
-	if (playerOneElo == None):
+	if playerOneElo == None:
 		playerOneElo = 1200
-
 	c.execute('SELECT name, ELO FROM players WHERE user_id=?;', [playerTwoId])
-	if (playerOneRow == None):
-		return "text", "You entered an invalid opponent...awkward"
 	playerTwoRow = c.fetchone()
+	if (playerTwoRow == None):
+		return "text", "You entered an invalid opponent...awkward"
 	playerTwoName = playerTwoRow[0]
 	playerTwoElo = playerTwoRow[1]
 	if (playerTwoElo == None):
@@ -56,9 +60,10 @@ def handleMatchInput(message):
 	playerOneRank = calculatePlayerRankFromElo(playerOneId, playerOneElo)
 	playerTwoRank = calculatePlayerRankFromElo(playerTwoId, playerTwoElo)
 
-	c.execute("SELECT * FROM players WHERE user_id=?",(message.sender_id,))
-
 	c.execute('INSERT INTO matches VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [timeStamp, playerOneName, playerOneScore, playerOneRank, playerOneElo, playerTwoName, playerTwoScore, playerTwoRank, playerTwoElo])
+	""" calc new Elos here """
+	c.execute('UPDATE players SET ELO=1200 WHERE user_id=?;', [playerOneId])
+	c.execute('UPDATE players SET ELO=1200 WHERE user_id=?;', [playerTwoId])
 	conn.commit()
 
 	if (playerTwoScore > playerOneScore):
@@ -70,7 +75,7 @@ def handleMatchInput(message):
 		winnerScore = playerOneScore
 		loserScore = playerTwoScore
 
-	return "text", "<@winnerName>" + " won! The score was " + str(winnerScore) + " - " + str(loserScore) + ". Your score has been recorded for posterity"
+	return "text", "<@"+winnerName+">" + " won! The score was " + str(winnerScore) + " - " + str(loserScore) + ". Your score has been recorded for posterity"
 
 
 def calculatePlayerRankFromElo(playerId, elo):
@@ -110,7 +115,7 @@ def getMatchHistory(message):
 	c.execute("SELECT * FROM matches WHERE playerOne=? OR playerTwo=? ORDER BY date DESC LIMIT ?",(username,username,limit))
 	results = c.fetchall()
 	if results == []:
-		return "text","Sorry, you have no previous games!"
+		return "text","Sorry, you have no previous matches!"
 	table = BeautifulTable()
 	table.column_headers = ["Date", "Match", "Score", "Winner"]
 	wins = 0
@@ -120,4 +125,41 @@ def getMatchHistory(message):
 		if winner == username:
 			wins +=1
 	title = str(int(float(wins)/float(len(results)) * 100)) + "% Win-Rate Over " + str(len(results)) + " Games\n"
-	return "text",title+"```"+str(table)+"```"
+	return "text", title+"```"+str(table)+"```"
+
+def getPlayerStats(message):
+	if len(message.text.split()) > 1:
+		return "text", "Invalid format.\n Type 'help' for more information."
+	c.execute("SELECT name,ELO FROM players WHERE user_id=?",(message.sender_id,))
+	playerInfo = c.fetchone()
+	username = playerInfo[0]
+	ELO = playerInfo[1]
+	c.execute("SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE playerOne=? OR playerTwo=?",(username,username))
+	results = c.fetchall()
+	print(results)
+	if results == []:
+		return "text", "Sorry, you have no previous matches!"
+	wins = 0
+	losses = 0
+	ptDiff = 0
+	for result in results:
+		playerOne = result[0]
+		scoreOne = result[1]
+		playerTwo = result[2]
+		scoreTwo = result[3]
+		winner = playerOne if scoreOne > scoreTwo else scoreTwo
+		if(winner == username):
+			wins+=1
+		else:
+			losses+=1
+
+		if(playerOne == username):
+			ptDiff += scoreOne - scoreTwo
+		else:
+			ptDiff += scoreTwo - scoreOne
+	table = BeautifulTable()
+	table.column_headers = ["ELO","Wins","Losses","Win-Rate","Point Diff", "Avg. Point Diff"]
+	table.append_row([ELO,wins,losses,float(wins)/float(wins+losses),ptDiff,float(ptDiff)/float(wins+losses)])
+	return "text", "```"+str(table)+"```"
+
+
