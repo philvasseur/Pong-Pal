@@ -18,8 +18,7 @@ def handleMatchInput(message):
 	correctFormat = "match [myScore] [@opponent] [opponentScore]"
 	commandArgs = message.text.split()
 	if len(commandArgs) != 4:
-		return "text", "This is not a valid command! PLEASE use this format: " + correctFormat
-
+		return "text", "Invalid input! Format the match command as follows:\n\t" + correctFormat + "\nType 'help' for more information."
 	playerOneId = message.sender_id
 	playerOneScore = commandArgs[1]
 	playerTwoId = commandArgs[2]
@@ -29,17 +28,17 @@ def handleMatchInput(message):
 	playerTwoScore = commandArgs[3]
 
 	if (playerOneId == playerTwoId):
-		return "text", "You can't play against yourself, you moron!!"
+		return "text", "You can't play against yourself, silly goose!"
 	elif (playerTwoId == message.receiver_id):
-		return "text", "You can't play against THE PongPal. You'd lose every time even if you tried."
+		return "text", "You can't play against me! I might know a lot about pong, but I have no limbs."
 	
 	if (not playerOneScore.isdigit() or not playerTwoScore.isdigit()):
-		return "text", "The scores have to be NUMBERS obviously"
+		return "text", "Invalid input! The scores must be numbers."
 	else:
 		playerOneScore = int(playerOneScore)
 		playerTwoScore = int(playerTwoScore)
 	if (playerOneScore == playerTwoScore):
-		return "text", "KEEP PLAYING. no ties allowed"
+		return "text", "KEEP PLAYING. No ties allowed."
 	timeStamp = datetime.now()
 
 	c.execute('SELECT name, ELO FROM players WHERE user_id=?;', [playerOneId])
@@ -51,12 +50,12 @@ def handleMatchInput(message):
 		playerOneRank = None
 		playerOneElo = 1200
 	else: 
-		playerOneRank = calculatePlayerRankFromElo(playerOneId, playerOneElo)
+		playerOneRank = calculatePlayerRank(playerOneName)
 
 	c.execute('SELECT name, ELO FROM players WHERE user_id=?;', [playerTwoId])
 	playerTwoRow = c.fetchone()
 	if (playerTwoRow == None):
-		return "text", "You entered an invalid opponent...awkward"
+		return "text", "The opponent you entered isn't a valid player."
 	playerTwoName = playerTwoRow[0]
 	playerTwoElo = playerTwoRow[1]
 
@@ -64,10 +63,9 @@ def handleMatchInput(message):
 		playerTwoElo = 1200
 		playerTwoRank = None
 	else:
-		playerTwoRank = calculatePlayerRankFromElo(playerTwoId, playerTwoElo)
+		playerTwoRank = calculatePlayerRank(playerTwoName)
 
 	c.execute('INSERT INTO matches VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [timeStamp, playerOneName, playerOneScore, playerOneRank, playerOneElo, playerTwoName, playerTwoScore, playerTwoRank, playerTwoElo])
-	""" calc new Elos here """
 	newEloOne, newEloTwo = elo(playerOneElo, playerTwoElo, playerOneScore, playerTwoScore)
 	c.execute('UPDATE players SET ELO=? WHERE user_id=?;', [newEloOne, playerOneId])
 	c.execute('UPDATE players SET ELO=? WHERE user_id=?;', [newEloTwo, playerTwoId])
@@ -82,19 +80,20 @@ def handleMatchInput(message):
 		winnerScore = playerOneScore
 		loserScore = playerTwoScore
 
-	return "text", "<@" + winnerName + ">" + " won! The score was " + str(winnerScore) + " - " + str(loserScore) + ". Your score has been recorded for posterity."
+	return "text", "<@" + winnerName + ">" + " won! The score was *" + str(winnerScore) + "-" + str(loserScore) + "*. Your score has been recorded for posterity."
 
-def calculatePlayerRankFromElo(playerId, elo):
-	c.execute('SELECT COUNT(name) FROM players WHERE ELO>?;', [elo])
+def calculatePlayerRank(playerName):
+	c.execute('SELECT COUNT(name) FROM players WHERE ELO > (SELECT ELO FROM players where name = ?);', [playerName])
 	rank = c.fetchone()[0] 
 	return rank + 1
 
 def sendHelpOptions(message):
 	helpInfo = "Commands:\n*_help_* - Lists these commands here :table_tennis_paddle_and_ball:\n"
 	statusInfo = "*_status_* - Sends you a picture of the current status of the ping-pong room\n"
-	matchInfo = "*_match_* - Records your match and updates your overall ranking\n\t`match [myScore] [@opponent] [opponentScore]`\n"
-	historyInfo = "*_history_* - Lists your match history, defaults to a list of 10. Takes an optional limit parameter as an integer or 'all'\n\t`history [limit?]`"
-	return 'text', helpInfo + statusInfo + matchInfo + historyInfo
+	matchInfo = "*_match_* - Records your match and updates your overall ranking\n\t`match [myScore] [@opponent] [opponentScore]`\n\t_Example usage_: match 21 @pongpal 5\n"
+	historyInfo = "*_history_* - Lists your match history, defaults to a list of 10. Takes an optional limit parameter as an integer or 'all'\n\t`history [limit?]`\n"
+	statsInfo = "*_stats_* - Shows a player's stats, defaults to your stats. Takes an optional player username parameter\n\t`stats [@player?]`"
+	return 'text', helpInfo + statusInfo + matchInfo + historyInfo + statsInfo
 
 def sendRoomStatus(message):
 	camera.capture('status.jpg')
@@ -134,15 +133,26 @@ def getMatchHistory(message):
 	return "text", title+"```"+str(table)+"```"
 
 def getPlayerStats(message):
-	if len(message.text.split()) > 1:
+	commandArgs = message.text.split()
+	if len(commandArgs) > 2:
 		return "text", "Invalid format.\n Type 'help' for more information."
-	c.execute("SELECT name,ELO FROM players WHERE user_id=?",(message.sender_id,))
-	playerInfo = c.fetchone()
+	if len(commandArgs) == 2:
+		playerId = commandArgs[1]
+		if (playerId[:2] != '<@'):
+			return "text", "Invalid command. Please tag a player using the '@' symbol.\nType 'help' for more information."
+		playerId = playerId.strip('<@>')
+		c.execute("SELECT name,ELO FROM players WHERE user_id=?",(playerId,))
+		playerInfo = c.fetchone()
+		if playerInfo == None:
+			return "text", "The opponent you entered isn't a valid player."
+	else:
+		c.execute("SELECT name,ELO FROM players WHERE user_id=?",(message.sender_id,))
+		playerInfo = c.fetchone()
 	username = playerInfo[0]
 	ELO = playerInfo[1]
+	rank = calculatePlayerRank(username)
 	c.execute("SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE playerOne=? OR playerTwo=?",(username,username))
 	results = c.fetchall()
-	print(results)
 	if results == []:
 		return "text", "Sorry, you have no previous matches!"
 	wins = 0
@@ -153,7 +163,7 @@ def getPlayerStats(message):
 		scoreOne = result[1]
 		playerTwo = result[2]
 		scoreTwo = result[3]
-		winner = playerOne if scoreOne > scoreTwo else scoreTwo
+		winner = playerOne if scoreOne > scoreTwo else playerTwo
 		if(winner == username):
 			wins+=1
 		else:
@@ -164,8 +174,8 @@ def getPlayerStats(message):
 		else:
 			ptDiff += scoreTwo - scoreOne
 	table = BeautifulTable()
-	table.column_headers = ["ELO","Wins","Losses","Win-Rate","Point Diff", "Avg. Point Diff"]
-	table.append_row([ELO,wins,losses,float(wins)/float(wins+losses),ptDiff,float(ptDiff)/float(wins+losses)])
-	return "text", "```"+str(table)+"```"
+	table.column_headers = ["ELO","Rank","Wins","Losses","Win-Rate","Point Diff", "Avg. Point Diff"]
+	table.append_row([ELO,rank,wins,losses,float(wins)/float(wins+losses),ptDiff,float(ptDiff)/float(wins+losses)])
+	return "text", "Stats for <@" + username + ">\n```"+str(table)+"```"
 
 
