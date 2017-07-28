@@ -210,10 +210,8 @@ def sendRoomStatus(message):
 	camera.capture(filename, resize=(1080, 811))
 	f = open(filename,"rb")
 	img_res = eval_single_img(filename)
-	print(img_res)
-	result = "It looks like the room is open!" if img_res == 0 else "Sorry, looks like the room is being used!"
-	sendMessage(result,message.channel)
-	return "file", {"comment":None,"filename":"However, check for yourself:","file":f}
+	result = "It looks like the room is open!" if img_res == 0 else "Sorry, looks like the room is being used! If you want to be notified when it's free, type `notify`."
+	return "file", {"comment":result,"filename":"Room Status:","file":f}
 
 def getMatchHistory(message):
 	limit = 10
