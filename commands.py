@@ -12,6 +12,8 @@ c = conn.cursor()
 try:
 	import picamera
 	camera = picamera.PiCamera()
+	camera.vflip = True
+	camera.hflip = True
 except ImportError:
 	logging.warning(' Failing to import picamera. DO NOT USE STATUS COMMAND.')
 
@@ -155,7 +157,7 @@ def sendHelpOptions(message):
 	return 'text', helpInfo + statusInfo + matchInfo + historyInfo + statsInfo + newgroupInfo + addmembersInfo + viewmembersInfo
 
 def sendRoomStatus(message):
-	camera.capture('status.jpg')
+	camera.capture('data/'+str(num)+'.jpg', resize=(1080, 811))
 	f = open('status.jpg','rb')
 	return "file", {"comment":"Current status of the ping pong room:","filename":"Room Status","file":f}
 
