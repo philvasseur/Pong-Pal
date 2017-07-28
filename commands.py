@@ -174,7 +174,7 @@ def displayRankings(message):
 			name, ELO = r[0], r[1]
 			if (ELO is not None):
 				index += 1
-				table.append_row([name, ELO, index])
+				table.append_row([name, "%.2f" % ELO, index])
 		if index == 0:
 			return "text", "No players are ranked. Get out there and play some pong so that you can start inputting scores!"
 		return "text", "Displaying top " + str(index) + " player(s) at Lucid\n```"+str(table)+"```"
@@ -274,9 +274,10 @@ def handleMembersInput(message):
 	elif (action == "view" and len(commandArgs) == 3):
 		c.execute("SELECT username FROM groups WHERE groupname=?", [groupName])
 		members = c.fetchall()
-		resultText = "Here are the members of group *" + groupName + "*:\n"
+		resultText = "Here are the members of group *" + groupName + "*:\n```"
 		for row in members:
 			resultText = resultText + "<@" + str(row[0]) + ">" + "\n"
+		resultText = resultText + "```"
 		return "text", resultText
 	else:
 		return "text", "Invalid members command. Type 'help' for more information."
@@ -347,7 +348,8 @@ def getGroupStats(group):
 			c.execute('SELECT ELO FROM players WHERE name=?', (m,))
 			ELO = c.fetchone()[0]
 			wins, losses, ptDiff = calcStats(results, m)
-			table.append_row([m, index,int(ELO),wins,losses,str(float(wins)/float(wins+losses)*100) + "%",ptDiff,float(ptDiff)/float(wins+losses)])
+			nice_percentage = "%.1f" % (float(wins)/float(wins+losses)*100)
+			table.append_row([m, index,int(ELO),wins,losses, str(nice_percentage) + "%",ptDiff,"%.2f"%(float(ptDiff)/float(wins+losses))])
 	if index == 0:
 		return "text", "No match history available for members of this group"
 	return "text", "Stats for group *" + group + "*:\n```"+str(table)+"```"
@@ -415,7 +417,8 @@ def getStats(message):
 		wins, losses, ptDiff = calcStats(results, username)
 		table = BeautifulTable(max_width=100)
 		table.column_headers = ["Rank","Elo","Wins","Losses","Win-Rate","Point Diff", "Avg. Point Diff"]
-		table.append_row([rank,int(ELO),wins,losses,str(float(wins)/float(wins+losses)*100) + "%",ptDiff,float(ptDiff)/float(wins+losses)])
+		nice_percentage = "%.1f" % (float(wins)/float(wins+losses)*100)
+		table.append_row([rank,int(ELO),wins,losses,str(nice_percentage) + "%",ptDiff,"%.2f"%(float(ptDiff)/float(wins+losses))])
 		messageHeader = "Stats for <@" + username + ">"
 		if group:
 			messageHeader = messageHeader + " in group *" + group + "*"
