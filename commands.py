@@ -52,8 +52,8 @@ def confirmMatch(message):
 
 	sendConfirmation("Your opponent <@" + playerTwo + "> confirmed the results of match #" + str(match) + ".", playerOneId)
 	
-	c.execute('UPDATE players SET ELO=? WHERE name=?;', [newEloOne, playerOne])
-	c.execute('UPDATE players SET ELO=? WHERE name=?;', [newEloTwo, playerTwo])
+	c.execute('UPDATE players SET ELO=? WHERE name=?', [newEloOne, playerOne])
+	c.execute('UPDATE players SET ELO=? WHERE name=?', [newEloTwo, playerTwo])
 	conn.commit()
 
 	return "text", "Thanks! I confirmed match #" + str(match) + " and updated player rankings."
@@ -78,7 +78,7 @@ def handleMatchInput(message):
 		return "text", "You can't play against me! I might know a lot about pong, but I have no limbs."
 	
 	if (not playerOneScore.isdigit() or not playerTwoScore.isdigit()):
-		return "text", "Invalid input! The scores must be numbers."
+		return "text", "Invalid input! The scores must be nonnegative integers."
 	else:
 		playerOneScore = int(playerOneScore)
 		playerTwoScore = int(playerTwoScore)
@@ -287,6 +287,7 @@ def sendHelpOptions(message):
 	statusInfo = "*_status_* - Sends you a picture of the current status of the ping-pong room\n"
 	notifyInfo = "*_notify_* - Notifies you when the room becomes free\n"
 	matchInfo = "*_match_* - Records your match and updates your overall ranking\n\t`match [myScore] [@opponent] [opponentScore]`\n\t_Example usage_: `match 21 <@pongpal> 5`\n"
+	confirmInfo = "*_confirm_* - Confirm the results of a match that your opponent recorded\n\tType `confirm [matchNumber]` when prompted\n" 
 	historyInfo = "*_history_* - Lists your match history, defaults to a list of 10. Takes an optional limit parameter as an integer or 'all'\n\t`history [limit?]`\n"
 	statsInfo = "*_stats_* - Shows a player's stats, defaults to your stats. Can show a player's stats within a group, defaults to the entire company. Takes an optional player username parameter and an optional group parameter. \n\t`stats [@player?] [group?]`\n\t_Example usage_: `stats <@pongpal> bot-group`\n"
 	rankingsInfo = "*_rankings_* - Displays company-wide rankings, defaults to a list of the top 10 players at Lucid. Takes an optional player parameter or an optional limit parameter. The player parameter allows you to view one player's rank. The limit parameter should either be an integer or 'all'\n\t`rankings [@player?] [limit?]`\n"
