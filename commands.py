@@ -52,8 +52,8 @@ def confirmMatch(message):
 
 	sendConfirmation("Your opponent <@" + playerTwo + "> confirmed the results of match #" + str(match) + ".", playerOneId)
 	
-	c.execute('UPDATE players SET ELO=? WHERE name=?;', [newEloOne, playerOne])
-	c.execute('UPDATE players SET ELO=? WHERE name=?;', [newEloTwo, playerTwo])
+	c.execute('UPDATE players SET ELO=? WHERE name=?', [newEloOne, playerOne])
+	c.execute('UPDATE players SET ELO=? WHERE name=?', [newEloTwo, playerTwo])
 	conn.commit()
 
 	return "text", "Thanks! I confirmed match #" + str(match) + " and updated player rankings."
@@ -78,7 +78,7 @@ def handleMatchInput(message):
 		return "text", "You can't play against me! I might know a lot about pong, but I have no limbs."
 	
 	if (not playerOneScore.isdigit() or not playerTwoScore.isdigit()):
-		return "text", "Invalid input! The scores must be numbers."
+		return "text", "Invalid input! The scores must be nonnegative integers."
 	else:
 		playerOneScore = int(playerOneScore)
 		playerTwoScore = int(playerTwoScore)
@@ -150,7 +150,7 @@ def displayRankings(message):
 	elif (len(commandArgs) == 2):
 		arg = commandArgs[1]
 		if (not isValidUserName(arg)):
-			if arg.isdigit():
+			if arg.isdigit() or arg == "all":
 				limit = arg
 			else:
 				return "text", "Invalid input for match command. Type 'help' for more information."
@@ -167,14 +167,17 @@ def displayRankings(message):
 		table.append_row([name, ELO, rank])
 		return "text", "Ranking of <@" + name + ">\n```"+str(table)+"```"
 	else:
-		c.execute('SELECT name, ELO FROM players ORDER BY ELO DESC LIMIT ?', (limit,))
+		if arg == "all":
+			c.execute('SELECT name, ELO FROM players ORDER BY ELO DESC')
+		else:
+			c.execute('SELECT name, ELO FROM players ORDER BY ELO DESC LIMIT ?', (limit,))
 		results = c.fetchall()
 		index = 0
 		for r in results:
 			name, ELO = r[0], r[1]
 			if (ELO is not None):
 				index += 1
-				table.append_row([name, ELO, index])
+				table.append_row([name, "%.2f" % ELO, index])
 		if index == 0:
 			return "text", "No players are ranked. Get out there and play some pong so that you can start inputting scores!"
 		return "text", "Displaying top " + str(index) + " player(s) at Lucid\n```"+str(table)+"```"
@@ -274,9 +277,10 @@ def handleMembersInput(message):
 	elif (action == "view" and len(commandArgs) == 3):
 		c.execute("SELECT username FROM groups WHERE groupname=?", [groupName])
 		members = c.fetchall()
-		resultText = "Here are the members of group *" + groupName + "*:\n"
+		resultText = "Here are the members of group *" + groupName + "*:\n```"
 		for row in members:
 			resultText = resultText + "<@" + str(row[0]) + ">" + "\n"
+		resultText = resultText + "```"
 		return "text", resultText
 	else:
 		return "text", "Invalid members command. Type 'help' for more information."
@@ -286,12 +290,13 @@ def sendHelpOptions(message):
 	statusInfo = "*_status_* - Sends you a picture of the current status of the ping-pong room\n"
 	notifyInfo = "*_notify_* - Notifies you when the room becomes free\n"
 	matchInfo = "*_match_* - Records your match and updates your overall ranking\n\t`match [myScore] [@opponent] [opponentScore]`\n\t_Example usage_: `match 21 <@pongpal> 5`\n"
+	confirmInfo = "*_confirm_* - Confirm the results of a match that your opponent recorded\n\tType `confirm [matchNumber]` when prompted\n" 
 	historyInfo = "*_history_* - Lists your match history, defaults to a list of 10. Takes an optional limit parameter as an integer or 'all'\n\t`history [limit?]`\n"
 	statsInfo = "*_stats_* - Shows a player's stats, defaults to your stats. Can show a player's stats within a group, defaults to the entire company. Takes an optional player username parameter and an optional group parameter. \n\t`stats [@player?] [group?]`\n\t_Example usage_: `stats <@pongpal> bot-group`\n"
 	rankingsInfo = "*_rankings_* - Displays company-wide rankings, defaults to a list of the top 10 players at Lucid. Takes an optional player parameter or an optional limit parameter. The player parameter allows you to view one player's rank. The limit parameter should either be an integer or 'all'\n\t`rankings [@player?] [limit?]`\n"
 	groupsInfo = "*_groups_* - Create a new group or view all existing groups. Creating a new group automatically adds you to the group. Groups allow you to view group members' stats within the context of their group\n\t Type `groups new [groupname]` to create a new group\n\t Type `groups view` to view all existing groups\n"
 	membersInfo = "*_members_* - Add a list of members to a group, remove a list of members from a group, or view all members in a group\n\tType `members add [groupname] [@member1] [@member2?] [@member3?] ...` to add new members to a group\n\tType `members remove [groupname] [@member1] [@member2?] [@member3?] ...` to remove existing members from a group\n\tType `members view [groupname]` to view members of a group"
-	return 'text', helpInfo + statusInfo + notifyInfo + matchInfo + historyInfo + statsInfo + rankingsInfo + groupsInfo + membersInfo
+	return 'text', helpInfo + statusInfo + notifyInfo + matchInfo + confirmInfo + historyInfo + statsInfo + rankingsInfo + groupsInfo + membersInfo
 
 def checkRoomToSendNotifications():
 	c.execute("SELECT user_id FROM waitlist ORDER BY date")
@@ -371,7 +376,8 @@ def getGroupStats(group):
 			c.execute('SELECT ELO FROM players WHERE name=?', (m,))
 			ELO = c.fetchone()[0]
 			wins, losses, ptDiff = calcStats(results, m)
-			table.append_row([m, index,int(ELO),wins,losses,str(float(wins)/float(wins+losses)*100) + "%",ptDiff,float(ptDiff)/float(wins+losses)])
+			nice_percentage = "%.1f" % (float(wins)/float(wins+losses)*100)
+			table.append_row([m, index,int(ELO),wins,losses, str(nice_percentage) + "%",ptDiff,"%.2f"%(float(ptDiff)/float(wins+losses))])
 	if index == 0:
 		return "text", "No match history available for members of this group"
 	return "text", "Stats for group *" + group + "*:\n```"+str(table)+"```"
@@ -386,16 +392,21 @@ def getStats(message):
 	elif len(commandArgs) == 3:
 		playerId = commandArgs[1]
 		if (not isValidUserName(playerId)):
-			return "text", "Invalid command. Please tag a player using the '@' symbol. Type 'help' for more information."
+			return "text", "Invalid command. Type 'help' for more information."
 		playerId = playerId.strip('<@>')
 		c.execute("SELECT name,ELO FROM players WHERE user_id=?",(playerId,))
 		playerInfo = c.fetchone()
+		playerName = playerInfo[0]
 		playerIsYou = False
 		group = commandArgs[2]
 		c.execute('SELECT groupname FROM groups WHERE groupname=?', (group,))
 		result = c.fetchone()
 		if (result == None):
 			return "text", "The group you entered doesn't exist!"
+		c.execute('SELECT username FROM groups WHERE username=? AND groupname=?', (playerName, group,))
+		isMember = c.fetchone() != None
+		if (not isMember):
+			return "text", "Invalid command. <@" + playerName + "> is not a member of *" + group + "*"
 	elif len(commandArgs) == 2:
 		optionalArg = commandArgs[1]
 		if (not isValidUserName(optionalArg)):
@@ -438,7 +449,8 @@ def getStats(message):
 		wins, losses, ptDiff = calcStats(results, username)
 		table = BeautifulTable(max_width=100)
 		table.column_headers = ["Rank","Elo","Wins","Losses","Win-Rate","Point Diff", "Avg. Point Diff"]
-		table.append_row([rank,int(ELO),wins,losses,str(float(wins)/float(wins+losses)*100) + "%",ptDiff,float(ptDiff)/float(wins+losses)])
+		nice_percentage = "%.1f" % (float(wins)/float(wins+losses)*100)
+		table.append_row([rank,int(ELO),wins,losses,str(nice_percentage) + "%",ptDiff,"%.2f"%(float(ptDiff)/float(wins+losses))])
 		messageHeader = "Stats for <@" + username + ">"
 		if group:
 			messageHeader = messageHeader + " in group *" + group + "*"

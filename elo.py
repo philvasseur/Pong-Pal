@@ -4,6 +4,10 @@
 # See https://en.wikipedia.org/wiki/Elo_rating_system
 
 from __future__ import division
+import sqlite3
+
+conn = sqlite3.connect('pingpong.db')
+c = conn.cursor()
 
 def expected(eloA, eloB):
     """
@@ -15,7 +19,7 @@ def expected(eloA, eloB):
     return 1 / (1 + 10 ** ((eloB - eloA) / 400))
 
 # Returns the two new Elo values in a tuple: (newA, newB)
-def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
+def elo(eloA, eloB, scoreA, scoreB, k=32):
     """
     Calculate the new Elo rating for a player
     :param eloA: The previous Elo rating for player A
@@ -24,9 +28,14 @@ def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
     :param scoreB: Score of Player B
     :param k: The k-factor for Elo, used as a scalar (default: 32)
     :param eloMax: The max rating in the company (default: 3000)
+    
+    Lost points are based on original ELO algorithm (expected match result and relative ELO rankings).
+    Gained points are also based on game point differential and company ranking.
     """
+    c.execute('SELECT max(ELO) from players')
+    eloMax = c.fetchone()[0]
 
-    if eloMax < 1800:
+    if eloMax <= 1800:
         eloMax = 3000
 
     # Calculated expected score of this match
@@ -34,31 +43,34 @@ def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
     expB = 1 - expA
     wonA = int(scoreA > scoreB)
     wonB = 1 - wonA
+
     scoreMax = max(scoreA, scoreB)
     diff = abs(scoreA - scoreB)
     flag = 1
 
-    # Calculate new base ELO score before factoring in game score
-    baseA = eloA + k * (wonA - expA) * (1 - (wonA * (eloA / eloMax)))
-    baseB = eloB + k * (wonB - expB) * (1 - (wonB * (eloB / eloMax)))
+    # Calculated ELO scores without factoring in game point differential
+    regularA = baseA = eloA + k * (wonA - expA)
+    regularB = baseB = eloB + k * (wonB - expB)
 
     # Span is the distance beyond the base score
-    spanA = abs(baseA - eloA) / 3
-    spanB = abs(baseB - eloB) / 3
+    spanA = abs(regularA - eloA) / 3
+    spanB = abs(regularB - eloB) / 3
 
     # Step is the number of ELO points gained/lost per ping-pong point
     stepA = spanA / (0.5 * scoreMax)
     stepB = spanB / (0.5 * scoreMax)
 
+    # Update ELO based on company ranking so that the player does not gain as much at higher levels
+    if wonA:
+        baseA += spanA * (1 - (wonA * (eloA / eloMax)))
+    else:
+        baseB += spanB * (1 - (wonB * (eloB / eloMax)))
+
     score = scoreA if scoreA < scoreB else scoreB
-    changeA = stepA * (score - 0.5 * scoreMax)
-    changeB = stepB * (score - 0.5 * scoreMax)
+    changeA = stepA * (score - 0.5 * scoreMax) if wonA else 0
+    changeB = stepB * (score - 0.5 * scoreMax) if wonB else 0
     if scoreA > scoreB:
         flag *= -1
-
-    # Calculated ELO scores without factoring in game point differential
-    # newA = baseA
-    # newB = baseB
 
     # New ELO scores factoring in game point differential
     newA = round(baseA + flag * changeA, 3)
@@ -76,12 +88,16 @@ def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
     # print "wonA " + str(wonA)
     # print "wonB " + str(wonB)
     # print "lower score: " + str(score)
-    # print "score diff " + str(diff)
-    # print "oldA " + str(eloA)
-    # print "newA, newA2: " + str(newA)
-    # print "oldB " + str(eloB)
-    # print "newB, newB2: " + str(newB)
-
+    # print "score diff: " + str(diff)
+    # print "oldA, oldB: " + str(eloA) + ", " + str(eloB)
+    # print "regularA, regularB: " + str(regularA) + ", " + str(regularB)
+    # print "newA, newB: " + str(newA) + ", " + str(newB)
+    # gained = abs(newA - eloA)
+    # lost = abs(newB - eloB)
+    # print "winner regular gained, new gained: " + str(abs(regularA - eloA)) + ", " + str(gained)
+    # print "loser regular lost, new lost: " + str(abs(regularB - eloB)) + ", " + str(lost)
+    # print "lost points to gained points ratio: " + str(lost / gained)
+    # print "total point swing: " + str(gained + lost)
     return newA, newB 
 
 # print "Match 1: higher rank A wins big"
@@ -120,6 +136,31 @@ def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
 # elo(1800, 1600, 11, 1)
 # print "\n" + "Match 18: normal player A wins 11-0 with 0.75 exp"
 # elo(1800, 1600, 11, 0)
-
-
-
+# print "\n" + "Match 19: equally ranked players compete at 1200"
+# elo(1200, 1200, 11, 0)
+# print "\n" + "Now score is 11-5"
+# elo(1200, 1200, 11, 5)
+# print "\n" + "Now score is 11-9"
+# elo(1200, 1200, 11, 9)
+# print "\n" + "Match 20: equally ranked players compete at 1200"
+# elo(1600, 1600, 11, 0)
+# print "\n" + "Now score is 11-5"
+# elo(1600, 1600, 11, 5)
+# print "\n" + "Now score is 11-9"
+# elo(1600, 1600, 11, 9)
+# print "\n" + "Match 21: equally ranked players compete at 2000"
+# elo(2000, 2000, 11, 0)
+# print "\n" + "Now score is 11-5"
+# elo(2000, 2000, 11, 5)
+# print "\n" + "Now score is 11-9"
+# elo(2000, 2000, 11, 9)
+# print "\n" + "Match 22: max rank wins a game"
+# elo(3000, 2000, 11, 9)
+# print "\n" + "Match 23: max rank loses a game"
+# elo(3000, 2000, 9, 11)
+# print "\n" + "Now score is 0-11"
+# elo(3000, 2000, 0, 11)
+# print "\n" + "Match 23: max rank loses a game"
+# elo(2200, 1200, 9, 11)
+# print "\n" + "Now score is 0-11"
+# elo(2200, 1200, 0, 11)
