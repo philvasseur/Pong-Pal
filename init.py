@@ -66,16 +66,22 @@ if __name__ == "__main__":
 			if count % 180 == 0:
 				count = 1
 				commands.checkRoomToSendNotifications()
-
-
 			for event in slack.rtm_read():
+				if event.get('type') == 'team_join':
+					user = event.get('user')
+					conn = sqlite3.connect('pingpong.db')
+					c = conn.cursor()
+					c.execute("INSERT OR IGNORE INTO players VALUES(?,?,?,?)", (datetime.now(),user["name"],user["id"],None,))
+					conn.commit()
+					conn.close()
+					continue
 				msg = Message(event)
 				if msg.isNewMessage and msg.text.startswith("<@"+msg.receiver_id+">") and len(msg.text.split()) >= 2 and msg.text.split()[1] == 'rankings':
 					msg.text = msg.text.split(' ', 1)[1]
 					_,output = commands.displayRankings(msg)
 					sendMessage(output,msg.channel)
 				if msg.sender_id == BOT_ID or not msg.isNewMessage or not msg.isDM:
-					continue;
+					continue
 				parseMessage(msg)
 			time.sleep(1)
 			count+=1
