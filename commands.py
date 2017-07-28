@@ -150,7 +150,7 @@ def displayRankings(message):
 	elif (len(commandArgs) == 2):
 		arg = commandArgs[1]
 		if (not isValidUserName(arg)):
-			if arg.isdigit():
+			if arg.isdigit() or arg == "all":
 				limit = arg
 			else:
 				return "text", "Invalid input for match command. Type 'help' for more information."
@@ -167,7 +167,10 @@ def displayRankings(message):
 		table.append_row([name, ELO, rank])
 		return "text", "Ranking of <@" + name + ">\n```"+str(table)+"```"
 	else:
-		c.execute('SELECT name, ELO FROM players ORDER BY ELO DESC LIMIT ?', (limit,))
+		if arg == "all":
+			c.execute('SELECT name, ELO FROM players ORDER BY ELO DESC')
+		else:
+			c.execute('SELECT name, ELO FROM players ORDER BY ELO DESC LIMIT ?', (limit,))
 		results = c.fetchall()
 		index = 0
 		for r in results:
