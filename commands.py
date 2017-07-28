@@ -305,7 +305,7 @@ def sendHelpOptions(message):
 	return 'text', helpInfo + statusInfo + notifyInfo + matchInfo + confirmInfo + historyInfo + statsInfo + rankingsInfo + groupsInfo + membersInfo
 
 def checkRoomToSendNotifications(ignoreId=None):
-	c.execute("SELECT user_id FROM waitlist WHERE user_id != ? ORDER BY date",(ignoreId))
+	c.execute("SELECT user_id FROM waitlist WHERE user_id != ? ORDER BY date")
 	waitlist = c.fetchall()
 	if len(waitlist) == 0:
 		return
@@ -318,6 +318,8 @@ def checkRoomToSendNotifications(ignoreId=None):
 	conn.commit()
 	for row in waitlist:
 		user_id = row[0]
+		if user_id == ignoreId:
+			continue
 		sendConfirmation("Hey! It looks like the ping pong room is open! Type `status` to check for yourself!",user_id)
 
 def addToWaitlist(message):
