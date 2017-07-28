@@ -1,4 +1,4 @@
-import os
+import os, logging
 try:
 	import tensorflow as tf
 	from PIL import Image
