@@ -43,6 +43,12 @@ def confirmMatch(message):
 	playerOneElo = playerOneElo if playerOneElo != None else 1200
 	playerTwoElo = playerTwoElo if playerTwoElo != None else 1200
 
+	#check if match has alredy been confirmed
+	c.execute('SELECT confirmed FROM matches WHERE matchNumber=?', (match,))
+	confirmed = c.fetchone()[0]
+	if confirmed:
+		return "text", "Match #" + match + " has already been confirmed!"
+	
 	""" calc new Elos here """
 	newEloOne, newEloTwo = elo(playerOneElo, playerTwoElo, playerOneScore, playerTwoScore)
 	playerOneRank = calculatePlayerRank(playerOne)
@@ -150,7 +156,7 @@ def displayRankings(message):
 	elif (len(commandArgs) == 2):
 		arg = commandArgs[1]
 		if (not isValidUserName(arg)):
-			if arg.isdigit():
+			if arg.isdigit() or arg == "all":
 				limit = arg
 			else:
 				return "text", "Invalid input for match command. Type 'help' for more information."
@@ -167,7 +173,10 @@ def displayRankings(message):
 		table.append_row([name, ELO, rank])
 		return "text", "Ranking of <@" + name + ">\n```"+str(table)+"```"
 	else:
-		c.execute('SELECT name, ELO FROM players ORDER BY ELO DESC LIMIT ?', (limit,))
+		if limit == "all":
+			c.execute('SELECT name, ELO FROM players ORDER BY ELO DESC')
+		else:
+			c.execute('SELECT name, ELO FROM players ORDER BY ELO DESC LIMIT ?', (limit,))
 		results = c.fetchall()
 		index = 0
 		for r in results:
