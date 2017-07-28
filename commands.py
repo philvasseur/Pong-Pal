@@ -20,7 +20,7 @@ def confirmMatch(message):
 	correctFormat = "confirm [matchNumber]"
 	commandArgs = message.text.split()
 	if len(commandArgs) != 2:
-		return "text", "This is not a valid command! PLEASE use this format: " + correctFormat
+		return "text", "This is not a valid command! Please use this format: `" + correctFormat + "`"
 	match = commandArgs[1]
 	c.execute('SELECT confirmPermissions, playerOne, playerTwo, scoreOne, scoreTwo FROM matches WHERE matchNumber=?', [match])
 	players = c.fetchone()
@@ -152,14 +152,14 @@ def displayRankings(message):
 	forOnePlayer = False
 	commandArgs = message.text.split()
 	if (len(commandArgs) > 2):
-		return "text", "Invalid input for match command. Type 'help' for more information."
+		return "text", "Invalid input for rankings command. Type 'help' for more information."
 	elif (len(commandArgs) == 2):
 		arg = commandArgs[1]
 		if (not isValidUserName(arg)):
 			if arg.isdigit() or arg == "all":
 				limit = arg
 			else:
-				return "text", "Invalid input for match command. Type 'help' for more information."
+				return "text", "Invalid input for rankings command. Type 'help' for more information."
 		else:
 			player = arg.strip('<@>')
 			forOnePlayer = True

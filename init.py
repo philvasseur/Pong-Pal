@@ -63,7 +63,7 @@ if __name__ == "__main__":
 		print('PongPal - Connected and Ready To Go!')
 		count = 1
 		while(True):
-			if count % 180 == 0:
+			if count % 120 == 0:
 				count = 1
 				commands.checkRoomToSendNotifications()
 
