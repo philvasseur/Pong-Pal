@@ -22,7 +22,7 @@ class Message(object):
 
 def parseMessage(message):
 	commandMap = {"help":commands.sendHelpOptions,"match":commands.handleMatchInput,"status":commands.sendRoomStatus, "history":commands.getMatchHistory,'stats':commands.getStats,'groups':commands.handleGroupsInput,'members':commands.handleMembersInput,'confirm':commands.confirmMatch, 'rankings': commands.displayRankings, "notify": commands.addToWaitlist}
-	text = message.text
+	text = message.text	
 	if len(text.split()) == 0:
 		sendMessage("Sorry, I didn't recognize your command. Type 'help' for a list of options.")
 		return
@@ -63,7 +63,7 @@ if __name__ == "__main__":
 		print('PongPal - Connected and Ready To Go!')
 		count = 1
 		while(True):
-			if count % 180 == 0:
+			if count % 120 == 0:
 				count = 1
 				commands.checkRoomToSendNotifications()
 			for event in slack.rtm_read():

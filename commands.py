@@ -20,7 +20,7 @@ def confirmMatch(message):
 	correctFormat = "confirm [matchNumber]"
 	commandArgs = message.text.split()
 	if len(commandArgs) != 2:
-		return "text", "This is not a valid command! PLEASE use this format: " + correctFormat
+		return "text", "This is not a valid command! Please use this format: `" + correctFormat + "`"
 	match = commandArgs[1]
 	c.execute('SELECT confirmPermissions, playerOne, playerTwo, scoreOne, scoreTwo FROM matches WHERE matchNumber=?', [match])
 	players = c.fetchone()
@@ -152,14 +152,14 @@ def displayRankings(message):
 	forOnePlayer = False
 	commandArgs = message.text.split()
 	if (len(commandArgs) > 2):
-		return "text", "Invalid input for match command. Type 'help' for more information."
+		return "text", "Invalid input for rankings command. Type 'help' for more information."
 	elif (len(commandArgs) == 2):
 		arg = commandArgs[1]
 		if (not isValidUserName(arg)):
 			if arg.isdigit() or arg == "all":
 				limit = arg
 			else:
-				return "text", "Invalid input for match command. Type 'help' for more information."
+				return "text", "Invalid input for rankings command. Type 'help' for more information."
 		else:
 			player = arg.strip('<@>')
 			forOnePlayer = True
@@ -304,26 +304,29 @@ def sendHelpOptions(message):
 	membersInfo = "*_members_* - Add a list of members to a group, remove a list of members from a group, or view all members in a group\n\tType `members add [groupname] [@member1] [@member2?] [@member3?] ...` to add new members to a group\n\tType `members remove [groupname] [@member1] [@member2?] [@member3?] ...` to remove existing members from a group\n\tType `members view [groupname]` to view members of a group"
 	return 'text', helpInfo + statusInfo + notifyInfo + matchInfo + confirmInfo + historyInfo + statsInfo + rankingsInfo + groupsInfo + membersInfo
 
-def checkRoomToSendNotifications():
+def checkRoomToSendNotifications(ignoreId=None):
 	c.execute("SELECT user_id FROM waitlist ORDER BY date")
 	waitlist = c.fetchall()
 	if len(waitlist) == 0:
-		print("No one on waitlist")
 		return
 	filename = "room_status.jpg"
 	camera.capture(filename, resize=(1080, 811))
 	img_res = eval_single_img(filename)
 	if img_res == 1:
-		print("Room Not Empty")
 		return
 	c.execute("DELETE FROM waitlist")
 	conn.commit()
 	for row in waitlist:
 		user_id = row[0]
-		sendConfirmation("It looks like the room is open! Type `status` to check for yourself!",user_id)
+		if user_id == ignoreId:
+			continue
+		sendConfirmation("Hey! It looks like the ping pong room is open! Type `status` to check for yourself!",user_id)
 
 def addToWaitlist(message):
-	c.execute("INSERT OR IGNORE INTO waitlist VALUES(?,?)",(datetime.now(),message.sender_id))
+	try:
+		c.execute("INSERT INTO waitlist VALUES(?,?)",(datetime.now(),message.sender_id))
+	except sqlite3.IntegrityError:
+		return "text","You're already on the list! I'll keep checking and notify you when it's open!"
 	conn.commit()
 	return "text","I'll check every few minutes and send you a message if the room is free!"
 
@@ -332,7 +335,11 @@ def sendRoomStatus(message):
 	camera.capture(filename, resize=(1080, 811))
 	f = open(filename,"rb")
 	img_res = eval_single_img(filename)
-	result = "It looks like the room is open!" if img_res == 0 else "Sorry, looks like the room is being used! If you want to be notified when it's free, type `notify`."
+	if img_res == 0:
+		result = "It looks like the room is open!"
+		checkRoomToSendNotifications(message.sender_id)
+	else:
+		result = "Sorry, looks like the room is being used! If you want to be notified when it's free, type `notify`."
 	return "file", {"comment":result,"filename":"Room Status:","file":f}
 
 def getMatchHistory(message):
