@@ -21,7 +21,7 @@ class Message(object):
 		self.isNewMessage = self.subtype == None and self.type == "message"
 
 def parseMessage(message):
-	commandMap = {"help":commands.sendHelpOptions,"match":commands.handleMatchInput,"status":commands.sendRoomStatus, "history":commands.getMatchHistory,'stats':commands.getPlayerStats, "confirm":commands.confirmMatch}
+	commandMap = {"help":commands.sendHelpOptions,"match":commands.handleMatchInput,"status":commands.sendRoomStatus, "history":commands.getMatchHistory,'stats':commands.getPlayerStats,'newgroup':commands.createGroup, 'groupmembers':commands.viewGroupMembers, 'addmembers':commands.addMembersToGroup, 'viewmembers':commands.viewGroupMembers, "confirm":commands.confirmMatch}
 	text = message.text
 	if len(text.split()) == 0:
 		sendMessage("Sorry, I didn't recognize your command. Type 'help' for a list of options.")
@@ -49,7 +49,6 @@ def sendConfirmation(text, opponentId):
 		as_user = True,
 		text=text
 	)
-
 
 if __name__ == "__main__":
 	if slack.rtm_connect():
