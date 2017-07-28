@@ -66,7 +66,7 @@ def handleMatchInput(message):
 	correctFormat = "match [myScore] [@opponent] [opponentScore]"
 	commandArgs = message.text.split()
 	if len(commandArgs) != 4:
-		return "text", "Invalid input! Format the match command as follows:\n\t" + correctFormat + "\nType 'help' for more information."
+		return "text", "Invalid input! Format the match command as follows:\n\t" + correctFormat + " Type 'help' for more information."
 	playerOneId = message.sender_id
 	playerOneScore = commandArgs[1]
 	playerTwoId = commandArgs[2]
@@ -142,16 +142,70 @@ def displayRankings(message):
 	return null
 	#TBD
 
+def handleGroupsInput(message):
+	commandArgs = message.text.split()
+	if (len(commandArgs) > 3 or len(commandArgs) < 2):
+		return "text", "Invalid groups command. Type 'help' for more information."
+	action = commandArgs[1]
+	if (action == "view" and len(commandArgs) == 2):
+		c.execute('SELECT DISTINCT groupname from groups;')
+		groups = c.fetchall()
+		groupsList = ""
+		for g in groups:
+			groupsList = groupsList + g[0] + "\n"
+		return "text", "List of all pong groups at Lucid:\n" + groupsList
+	elif (action == "new" and len(commandArgs) == 3):
+		groupName = commandArgs[2]
+		createGroup(groupName, message.sender_id)
+		return "text", "Congrats, you have created a new group called *" + groupName + "*!"
+	else:
+		return "text", "Invalid groups command. Type 'help' for more information."
+
+def handleMembersInput(message):
+	commandArgs = message.text.split()
+	if (len(commandArgs) < 3):
+		return "text", "Invalid members command. Type 'help' for more information."
+	action = commandArgs[1]
+	groupName = commandArgs[2]
+	c.execute("SELECT groupname FROM groups WHERE groupname=?", [groupName])
+	results = c.fetchone()
+	if (results == None):
+		return "text", "This group doesn't exist!"
+	if (action == "add" and len(commandArgs) > 3):
+		memberlist = getMembersFromCommand(commandArgs[3:])
+		membersAdded = ""
+		for m in memberlist:
+			c.execute("SELECT groupname FROM groups WHERE username=?", [groupName])
+			groups = c.fetchall()
+			alreadyInGroup = False
+			for g in groups:
+				if g[0] == groupName:
+					alreadyInGroup = True
+					print("don't add duplicate")
+			if (not alreadyInGroup):
+				c.execute("INSERT INTO groups VALUES (?, ?)", [m, groupName])
+				conn.commit()
+				membersAdded = membersAdded + "<@" + m + ">" + "\n"
+		return "text", "The following members were succesfully added to group " + groupName + ":\n" + membersAdded
+	elif (action == "view" and len(commandArgs) == 3):
+		c.execute("SELECT username FROM groups WHERE groupname=?", [groupName])
+		members = c.fetchall()
+		resultText = "Here are the members of group " + groupName + ":\n"
+		for row in members:
+			resultText = resultText + str(row[0]) + "\n"
+		return "text", resultText
+	else:
+		return "text", "Invalid members command. Type 'help' for more information."
+
 def sendHelpOptions(message):
 	helpInfo = "Commands:\n*_help_* - Lists these commands here :table_tennis_paddle_and_ball:\n"
 	statusInfo = "*_status_* - Sends you a picture of the current status of the ping-pong room\n"
-	matchInfo = "*_match_* - Records your match and updates your overall ranking\n\t`match [myScore] [@opponent] [opponentScore]`\n\t_Example usage_: match 21 @pongpal 5\n"
+	matchInfo = "*_match_* - Records your match and updates your overall ranking\n\t`match [myScore] [@opponent] [opponentScore]`\n\t_Example usage_: `match 21 <@pongpal> 5`\n"
 	historyInfo = "*_history_* - Lists your match history, defaults to a list of 10. Takes an optional limit parameter as an integer or 'all'\n\t`history [limit?]`\n"
-	statsInfo = "*_stats_* - Shows a player's stats, defaults to your stats. Can show a player's stats within a group, defaults to the entire company. Takes an optional player username parameter and an optional group parameter. \n\t`stats [@player?] [group?]`\n\t_Example usage_: stats @keyvan customer-ops\n"
-	newgroupInfo = "*_newgroup_* - Create a new group, which will allow you to view match history, stats, and rankings within the context of your group. Must add at least one group member\n\t`newgroup [groupname] [@member1] [@member2?] [@member3?] ...`\n\t _Example usage_: newgroup pongpalz @pongpal @katya @phil @stephen @christian @jacob\n"
-	addmembersInfo = "*_addmembers_* - Add members to an existing group\n\t`addmembers [groupname] [@member1] [@member2?] [@member3?] ...`\n"
-	viewmembersInfo = "*_viewmembers_* - View the members of a group\n\t`viewmembers [groupname]`"
-	return 'text', helpInfo + statusInfo + matchInfo + historyInfo + statsInfo + newgroupInfo + addmembersInfo + viewmembersInfo
+	statsInfo = "*_stats_* - Shows a player's stats, defaults to your stats. Can show a player's stats within a group, defaults to the entire company. Takes an optional player username parameter and an optional group parameter. \n\t`stats [@player?] [group?]`\n\t_Example usage_: `stats <@pongpal> bot-group`\n"
+	groupsInfo = "*_groups_* - Create a new group or view all existing groups. Creating a new group automatically adds you to the group\n\t Type `groups new [groupname]` to create a new group\n\t Type `groups view` to view all existing groups\n"
+	membersInfo = "*_members_* - Add a list of members to a group or view all members in a group\n\tType `members add [groupname] [@member1] [@member2?] [@member3?] ...` to add new members to a group\n\tType `members view [groupname]` to view members of a group"
+	return 'text', helpInfo + statusInfo + matchInfo + historyInfo + statsInfo + groupsInfo + membersInfo
 
 def sendRoomStatus(message):
 	camera.capture('status.jpg')
@@ -164,17 +218,17 @@ def getMatchHistory(message):
 	c.execute("SELECT * FROM players WHERE user_id=?",(message.sender_id,))
 	username = c.fetchone()[1]
 	if len(textArray) > 2:
-		return "text", "Invalid format. Format the history command as follows:\n\t`history [limit?]`\nType 'help' for more information."
+		return "text", "Invalid format. Format the history command as follows:\n\t`history [limit?]` Type 'help' for more information."
 	elif len(textArray) == 2:
 		try:
 			limit = int(textArray[1])
 			if limit < 1:
-				return "text", "'" + textArray[1] + "' is not a valid limit. Format the history command as follows:\n\t`history [limit?]`\nType 'help' for more information."
+				return "text", "'" + textArray[1] + "' is not a valid limit. Format the history command as follows:\n\t`history [limit?]` Type 'help' for more information."
 		except ValueError:
 			if(textArray[1] == 'all'):
 				limit = -1
 			else:
-				return "text", "'" + textArray[1] + "' is not a valid limit. Format the history command as follows:\n\t`history [limit?]`\nType 'help' for more information."
+				return "text", "'" + textArray[1] + "' is not a valid limit. Format the history command as follows:\n\t`history [limit?]` Type 'help' for more information."
 	c.execute("SELECT * FROM matches WHERE (playerOne=? OR playerTwo=?) AND confirmed=? ORDER BY date DESC LIMIT ?",(username,username,1,limit))
 	results = c.fetchall()
 	if results == []:
@@ -194,11 +248,11 @@ def getPlayerStats(message):
 	commandArgs = message.text.split()
 	groupId = None
 	if len(commandArgs) > 3:
-		return "text", "Invalid format.\n Type 'help' for more information."
+		return "text", "Invalid format. Type 'help' for more information."
 	elif len(commandArgs) == 3:
 		playerId = commandArgs[1]
 		if (not isValidUserName(playerId)):
-			return "text", "Invalid command. Please tag a player using the '@' symbol.\nType 'help' for more information."
+			return "text", "Invalid command. Please tag a player using the '@' symbol. Type 'help' for more information."
 		playerId = playerId.strip('<@>')
 		print(playerId)
 		c.execute("SELECT name,ELO FROM players WHERE user_id=?",(playerId,))
@@ -215,7 +269,7 @@ def getPlayerStats(message):
 			c.execute('SELECT groupname FROM groups WHERE groupname=?', (optionalArg,))
 			result = c.fetchone()
 			if (result == None):
-				return "text", "The optional argument you entered is neither a valid user nor a valid group.\nType 'help' for more information."
+				return "text", "The optional argument you entered is neither a valid user nor a valid group. Type 'help' for more information."
 			else:
 				groupId = optionalArg
 				c.execute("SELECT name,ELO FROM players WHERE user_id=?",(message.sender_id,))
@@ -241,6 +295,8 @@ def getPlayerStats(message):
 		rank = calculatePlayerRank(username)
 		c.execute("SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE playerOne=? OR playerTwo=?",(username,username))
 	results = c.fetchall()
+	if results == []:
+		return "text", "Sorry, you have no previous matches!"
 	wins, losses, ptDiff = calcStats(results, username)
 	table = BeautifulTable()
 	table.column_headers = ["ELO","Rank","Wins","Losses","Win-Rate","Point Diff", "Avg. Point Diff"]
@@ -251,8 +307,6 @@ def getPlayerStats(message):
 	return "text", messageHeader + "\n```"+str(table)+"```"
 
 def calcStats(results, username):
-	if results == []:
-		return "text", "Sorry, you have no previous matches!"
 	wins = 0
 	losses = 0
 	ptDiff = 0
@@ -279,22 +333,14 @@ def isValidUserName(str):
 		return False
 	return True
 
-"""must add at least one player when you add a new group """
-def createGroup(message):
-	commandArgs = message.text.split()
-	if len(commandArgs) < 3:
-		return "text", "Invalid format. Type 'help' for more information."
-	groupName = commandArgs[1]
-	c.execute("SELECT groupname FROM groups WHERE groupname=?", [groupName])
+#automatically adds you to group
+def createGroup(groupname, username):
+	c.execute("SELECT groupname FROM groups WHERE groupname=?", [groupname])
 	results = c.fetchone()
 	if (results != None):
 		return "text", "Sorry, a group with this name already exists!"
-	memberlist = getMembersFromCommand(commandArgs[2:])
-	for m in memberlist:
-		print(m + " " + groupName)
-		c.execute("INSERT INTO groups VALUES (?, ?)", [m, groupname])
-		conn.commit()
-	return "text", "Congrats, you have created a new group called " + groupName + "!"
+	c.execute("INSERT INTO groups VALUES (?, ?)", [username, groupname])
+	conn.commit()
 
 def getMembersFromCommand(inputtedMembers):
 	memberlist = []
@@ -309,37 +355,8 @@ def getMembersFromCommand(inputtedMembers):
 		i += 1
 	return memberlist
 
-def viewGroupMembers(message):
-	commandArgs = message.text.split()
-	if(len(commandArgs) != 2):
-		return "text", "Invalid format. Type 'help' for more information."
-	groupname = commandArgs[1]
-	c.execute("SELECT username FROM groups WHERE groupname=?", [groupname])
-	members = c.fetchall()
-	resultText = "Here are the members of group " + groupname + ":\n"
-	for row in members:
-		resultText = resultText + str(row[0]) + "\n"
-	return "text", resultText
+	
 
-def addMembersToGroup(message):
-	commandArgs = message.text.split()
-	if len(commandArgs) < 3:
-		return "text", "Invalid format. Type 'help' for more information."
-	groupName = commandArgs[1]
-	c.execute("SELECT groupname FROM groups WHERE groupname=?", [groupName])
-	results = c.fetchone()
-	if (results == None):
-		return "text", "This group doesn't exist!"
-	memberlist = getMembersFromCommand(commandArgs[2:])
-	for m in memberlist:
-		c.execute("SELECT groupname FROM groups WHERE username=?", [groupName])
-		groups = c.fetchall()
-		alreadyInGroup = False
-		for g in groups:
-			if g[0] == groupName:
-				alreadyInGroup = True
-				print("don't add duplicate")
-		if (not alreadyInGroup):
-			c.execute("INSERT INTO groups VALUES (?, ?)", [m, groupName])
-			conn.commit()
-	return "text", "Members succesfully added to group " + groupName + "!"
+	
+	
+	
