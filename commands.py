@@ -305,7 +305,7 @@ def sendHelpOptions(message):
 	return 'text', helpInfo + statusInfo + notifyInfo + matchInfo + confirmInfo + historyInfo + statsInfo + rankingsInfo + groupsInfo + membersInfo
 
 def checkRoomToSendNotifications(ignoreId=None):
-	c.execute("SELECT user_id FROM waitlist WHERE user_id != ? ORDER BY date")
+	c.execute("SELECT user_id FROM waitlist ORDER BY date")
 	waitlist = c.fetchall()
 	if len(waitlist) == 0:
 		return
