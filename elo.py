@@ -56,13 +56,13 @@ def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
     if scoreA > scoreB:
         flag *= -1
 
-    # New ELO scores factoring in game point differential
-    newA = baseA + flag * changeA
-    newB = baseB - (flag * changeB)
-
     # Calculated ELO scores without factoring in game point differential
     # newA = baseA
     # newB = baseB
+
+    # New ELO scores factoring in game point differential
+    newA = round(baseA + flag * changeA, 3)
+    newB = round(baseB - (flag * changeB), 3)
 
     # Output for testing
     # print "baseA " + str(baseA)
@@ -78,9 +78,9 @@ def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
     # print "lower score: " + str(score)
     # print "score diff " + str(diff)
     # print "oldA " + str(eloA)
-    # print "newA, newA2: " + str(newA) + ", " + str(newA3)
+    # print "newA, newA2: " + str(newA)
     # print "oldB " + str(eloB)
-    # print "newB, newB2: " + str(newB) + ", " + str(newB3)
+    # print "newB, newB2: " + str(newB)
 
     return newA, newB 
 
