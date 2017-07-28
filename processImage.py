@@ -5,7 +5,7 @@ try:
 	import numpy as np
 	os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 except ImportError:
-	logging.warning('Failed to import tensorflow. DO NOT USE STATUS COMMAND.')
+	logging.warning('Failed to import tensorflow. DO NOT USE STATUS OR NOTIFY COMMAND.')
 
 
 def get_single_img(file_path):
@@ -38,4 +38,4 @@ def eval_single_img(file_path):
 if __name__ == '__main__':
 	while True:
 		path = raw_input("File Path: ")
-		eval_single_img(path)
+		print(eval_single_img(path))
