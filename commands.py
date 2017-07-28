@@ -299,13 +299,11 @@ def checkRoomToSendNotifications():
 	c.execute("SELECT user_id FROM waitlist ORDER BY date")
 	waitlist = c.fetchall()
 	if len(waitlist) == 0:
-		print("No one on waitlist")
 		return
 	filename = "room_status.jpg"
 	camera.capture(filename, resize=(1080, 811))
 	img_res = eval_single_img(filename)
 	if img_res == 1:
-		print("Room Not Empty")
 		return
 	c.execute("DELETE FROM waitlist")
 	conn.commit()
@@ -323,7 +321,11 @@ def sendRoomStatus(message):
 	camera.capture(filename, resize=(1080, 811))
 	f = open(filename,"rb")
 	img_res = eval_single_img(filename)
-	result = "It looks like the room is open!" if img_res == 0 else "Sorry, looks like the room is being used! If you want to be notified when it's free, type `notify`."
+	if img_res == 0:
+		result = "It looks like the room is open!"
+		checkRoomToSendNotifications()
+	else:
+		result = "Sorry, looks like the room is being used! If you want to be notified when it's free, type `notify`."
 	return "file", {"comment":result,"filename":"Room Status:","file":f}
 
 def getMatchHistory(message):
