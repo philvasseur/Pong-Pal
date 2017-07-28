@@ -65,8 +65,8 @@ if __name__ == "__main__":
 			for event in slack.rtm_read():
 				msg = Message(event)
 				if msg.isNewMessage and msg.text.startswith("<@"+msg.receiver_id+">") and len(msg.text.split()) == 2 and msg.text.split()[1] == 'ranking':
-					commands.displayRanking(msg)
-				elif msg.sender_id == BOT_ID or not msg.isNewMessage or not msg.isDM:
+					commands.displayRankings(msg)
+				if msg.sender_id == BOT_ID or not msg.isNewMessage or not msg.isDM:
 					continue;
 				parseMessage(msg)
 			time.sleep(1)

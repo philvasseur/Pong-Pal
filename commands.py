@@ -125,7 +125,8 @@ def calculatePlayerRank(playerName):
 	return rank + 1
 
 def displayRankings(message):
-	return null
+	print("DISPLAYED")
+	return None
 	#TBD
 
 def sendHelpOptions(message):
