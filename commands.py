@@ -1,11 +1,10 @@
 """ Commands handled by the slack bot """
 from datetime import datetime
-from init import Message, BOT_ID
+from init import Message, BOT_ID, sendMessage, sendConfirmation
 import os,logging,sqlite3,elo
 from beautifultable import BeautifulTable
+from processImage import eval_single_img
 from elo import elo
-import init
-from init import sendMessage, sendConfirmation
 
 conn = sqlite3.connect('pingpong.db')
 c = conn.cursor()
@@ -57,7 +56,7 @@ def confirmMatch(message):
 	c.execute('UPDATE players SET ELO=? WHERE name=?;', [newEloTwo, playerTwo])
 	conn.commit()
 
-	return "text", "Thanks! I confirmed match number " + str(match) + " and updated player rankings."
+	return "text", "Thanks! I confirmed match #" + str(match) + " and updated player rankings."
 
 #message object has: channel to repond to, text of the command, user who sent the command
 def handleMatchInput(message):
@@ -246,9 +245,14 @@ def sendHelpOptions(message):
 	return 'text', helpInfo + statusInfo + matchInfo + historyInfo + statsInfo + rankingsInfo + groupsInfo + membersInfo
 
 def sendRoomStatus(message):
-	camera.capture('data/'+str(num)+'.jpg', resize=(1080, 811))
-	f = open('status.jpg','rb')
-	return "file", {"comment":"Current status of the ping pong room:","filename":"Room Status","file":f}
+	filename = "room_status.jpg"
+	camera.capture(filename, resize=(1080, 811))
+	f = open(filename,"rb")
+	img_res = eval_single_img(filename)
+	print(img_res)
+	result = "It looks like the room is open!" if img_res == 0 else "Sorry, looks like the room is being used!"
+	sendMessage(result,message.channel)
+	return "file", {"comment":None,"filename":"However, check for yourself:","file":f}
 
 def getMatchHistory(message):
 	limit = 10
