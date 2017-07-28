@@ -213,19 +213,30 @@ def handleMembersInput(message):
 	if (action == "add" and len(commandArgs) > 3):
 		memberlist = getMembersFromCommand(commandArgs[3:])
 		membersAdded = ""
+		numAdded = 0
+		duplicates = ""
+		numDuplicates = 0
 		for m in memberlist:
-			c.execute("SELECT groupname FROM groups WHERE username=?", [groupName])
+			c.execute("SELECT groupname FROM groups WHERE username=?", [m])
 			groups = c.fetchall()
 			alreadyInGroup = False
 			for g in groups:
 				if g[0] == groupName:
 					alreadyInGroup = True
-					print("don't add duplicate")
 			if (not alreadyInGroup):
 				c.execute("INSERT INTO groups VALUES (?, ?)", [m, groupName])
 				conn.commit()
 				membersAdded = membersAdded + "<@" + m + ">" + "\n"
-		return "text", "The following members were succesfully added to group *" + groupName + "*:\n" + membersAdded
+				numAdded += 1
+			else:
+				duplicates = duplicates + "<@" + m + ">" + "\n"
+				numDuplicates += 1
+		responseMsg = ""
+		if (numAdded > 0):
+			responseMsg = responseMsg + "The following " + str(numAdded) + " member(s) have been succesfully added to group *" + groupName + "*:\n" + membersAdded + "\n"
+		if (numDuplicates > 0):
+			responseMsg = responseMsg + "The following " + str(numDuplicates) + " player(s) were already in the group:\n" + duplicates
+		return "text",  responseMsg
 	elif (action == "view" and len(commandArgs) == 3):
 		c.execute("SELECT username FROM groups WHERE groupname=?", [groupName])
 		members = c.fetchall()
