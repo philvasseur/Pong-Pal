@@ -3,6 +3,7 @@ from datetime import datetime
 from init import Message, BOT_ID, sendMessage, sendConfirmation
 import os,logging,sqlite3,elo
 from beautifultable import BeautifulTable
+from processImage import eval_single_img
 from elo import elo
 
 conn = sqlite3.connect('pingpong.db')
@@ -205,9 +206,12 @@ def sendHelpOptions(message):
 	return 'text', helpInfo + statusInfo + matchInfo + historyInfo + statsInfo + groupsInfo + membersInfo
 
 def sendRoomStatus(message):
-	camera.capture('data/'+str(num)+'.jpg', resize=(1080, 811))
-	f = open('status.jpg','rb')
-	return "file", {"comment":"Current status of the ping pong room:","filename":"Room Status","file":f}
+	filename = "room_status.jpg"
+	camera.capture(filename, resize=(1080, 811))
+	f = open(filename,"rb")
+	result = "It looks like the room is open!" if eval_single_img(filename) == 0 else "Sorry, looks like the room is being used!"
+	sendMessage(result,message.channel)
+	return "file", {"comment":None,"filename":"However, check for yourself:","file":f}
 
 def getMatchHistory(message):
 	limit = 10
