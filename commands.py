@@ -174,6 +174,8 @@ def displayRankings(message):
 			if (ELO is not None):
 				index += 1
 				table.append_row([name, ELO, index])
+		if index == 0:
+			return "text", "No players are ranked. Get out there and play some pong so that you can start inputting scores!"
 		return "text", "Displaying top " + str(index) + " player(s) at Lucid\n```"+str(table)+"```"
 
 def handleGroupsInput(message):
@@ -288,6 +290,7 @@ def getPlayerStats(message):
 	commandArgs = message.text.split()
 	groupId = None
 	playerIsYou = True
+	statsForGroup = False
 	if len(commandArgs) > 3:
 		return "text", "Invalid format. Type 'help' for more information."
 	elif len(commandArgs) == 3:
