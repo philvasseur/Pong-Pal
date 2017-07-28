@@ -389,16 +389,21 @@ def getStats(message):
 	elif len(commandArgs) == 3:
 		playerId = commandArgs[1]
 		if (not isValidUserName(playerId)):
-			return "text", "Invalid command. Please tag a player using the '@' symbol. Type 'help' for more information."
+			return "text", "Invalid command. Type 'help' for more information."
 		playerId = playerId.strip('<@>')
 		c.execute("SELECT name,ELO FROM players WHERE user_id=?",(playerId,))
 		playerInfo = c.fetchone()
+		playerName = playerInfo[0]
 		playerIsYou = False
 		group = commandArgs[2]
 		c.execute('SELECT groupname FROM groups WHERE groupname=?', (group,))
 		result = c.fetchone()
 		if (result == None):
 			return "text", "The group you entered doesn't exist!"
+		c.execute('SELECT username FROM groups WHERE username=? AND groupname=?', (playerName, group,))
+		isMember = c.fetchone() != None
+		if (not isMember):
+			return "text", "Invalid command. <@" + playerName + "> is not a member of *" + group + "*"
 	elif len(commandArgs) == 2:
 		optionalArg = commandArgs[1]
 		if (not isValidUserName(optionalArg)):
