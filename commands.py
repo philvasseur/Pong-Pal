@@ -14,7 +14,7 @@ try:
 	camera.vflip = True
 	camera.hflip = True
 except ImportError:
-	logging.warning(' Failing to import picamera. DO NOT USE STATUS COMMAND.')
+	logging.warning(' Failing to import picamera. DO NOT USE STATUS OR NOTIFY COMMAND.')
 
 def confirmMatch(message):
 	correctFormat = "confirm [matchNumber]"
@@ -261,7 +261,7 @@ def sendHelpOptions(message):
 def checkRoomToSendNotifications():
 	c.execute("SELECT user_id FROM waitlist ORDER BY date")
 	waitlist = c.fetchall()
-	if len(waitlist == 0):
+	if len(waitlist) == 0:
 		print("No one on waitlist")
 		return
 	filename = "room_status.jpg"

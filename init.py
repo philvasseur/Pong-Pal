@@ -21,7 +21,7 @@ class Message(object):
 		self.isNewMessage = self.subtype == None and self.type == "message"
 
 def parseMessage(message):
-	commandMap = {"help":commands.sendHelpOptions,"match":commands.handleMatchInput,"status":commands.sendRoomStatus, "history":commands.getMatchHistory,'stats':commands.getPlayerStats,'groups':commands.handleGroupsInput,'members':commands.handleMembersInput,'confirm':commands.confirmMatch, 'rankings': commands.displayRankings, "notify": commands.addToWaitlist}
+	commandMap = {"help":commands.sendHelpOptions,"match":commands.handleMatchInput,"status":commands.sendRoomStatus, "history":commands.getMatchHistory,'stats':commands.getStats,'groups':commands.handleGroupsInput,'members':commands.handleMembersInput,'confirm':commands.confirmMatch, 'rankings': commands.displayRankings, "notify": commands.addToWaitlist}
 	text = message.text
 	if len(text.split()) == 0:
 		sendMessage("Sorry, I didn't recognize your command. Type 'help' for a list of options.")
@@ -69,7 +69,7 @@ if __name__ == "__main__":
 
 			for event in slack.rtm_read():
 				msg = Message(event)
-				if msg.isNewMessage and msg.text.startswith("<@"+msg.receiver_id+">") and len(msg.text.split()) == 2 and msg.text.split()[1] == 'rankings':
+				if msg.isNewMessage and msg.text.startswith("<@"+msg.receiver_id+">") and len(msg.text.split()) >= 2 and msg.text.split()[1] == 'rankings':
 					msg.text = msg.text.split(' ', 1)[1]
 					_,output = commands.displayRankings(msg)
 					sendMessage(output,msg.channel)
