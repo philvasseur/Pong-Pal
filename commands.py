@@ -117,9 +117,14 @@ def handleMatchInput(message):
 	return "text", result + " Match #" + str(matchNum) + " is awaiting confirmation from your opponent."
 
 def calculatePlayerRank(playerName):
-	c.execute('SELECT COUNT(name) FROM players WHERE ELO > (SELECT ELO FROM players where name = ?);', [playerName])
-	rank = c.fetchone()[0] 
-	return rank + 1
+	c.execute('SELECT ELO FROM players where name = ?;', [playerName])
+	elo = c.fetchone()[0]
+	if elo is None:
+		return None
+	else:
+		c.execute("SELECT COUNT(name) FROM players WHERE ELO > ?;", [elo])
+		rank = c.fetchone()[0] 
+		return rank + 1
 
 def calculatePlayerRankInGroup(playerName, groupName):
 	members = getGroupMembers(groupName)
@@ -137,9 +142,40 @@ def getGroupMembers(groupName):
 	return memberlist
 
 def displayRankings(message):
-	print("DISPLAYED")
-	return None
-	#TBD
+	limit = 10
+	forOnePlayer = False
+	commandArgs = message.text.split()
+	if (len(commandArgs) > 2):
+		return "text", "Invalid input for match command. Type 'help' for more information."
+	elif (len(commandArgs) == 2):
+		arg = commandArgs[1]
+		if (not isValidUserName(arg)):
+			if arg.isdigit():
+				limit = arg
+			else:
+				return "text", "Invalid input for match command. Type 'help' for more information."
+		else:
+			player = arg.strip('<@>')
+			forOnePlayer = True
+	table = BeautifulTable(max_width=100)
+	table.column_headers = ["Player Name","ELO", "Rank"]
+	if forOnePlayer:
+		c.execute('SELECT name, ELO FROM players WHERE user_id=?', (player,))
+		row = c.fetchone()
+		name, ELO = row[0], row[1]
+		rank = calculatePlayerRank(name)
+		table.append_row([name, ELO, rank])
+		return "text", "Ranking of <@" + name + ">\n```"+str(table)+"```"
+	else:
+		c.execute('SELECT name, ELO FROM players ORDER BY ELO DESC LIMIT ?', (limit,))
+		results = c.fetchall()
+		index = 0
+		for r in results:
+			name, ELO = r[0], r[1]
+			if (ELO is not None):
+				index += 1
+				table.append_row([name, ELO, index])
+		return "text", "Displaying top " + str(index) + " player(s) at Lucid\n```"+str(table)+"```"
 
 def handleGroupsInput(message):
 	commandArgs = message.text.split()
@@ -191,7 +227,7 @@ def handleMembersInput(message):
 	elif (action == "view" and len(commandArgs) == 3):
 		c.execute("SELECT username FROM groups WHERE groupname=?", [groupName])
 		members = c.fetchall()
-		resultText = "Here are the members of group " + groupName + ":\n"
+		resultText = "Here are the members of group *" + groupName + "*:\n"
 		for row in members:
 			resultText = resultText + str(row[0]) + "\n"
 		return "text", resultText
@@ -204,9 +240,10 @@ def sendHelpOptions(message):
 	matchInfo = "*_match_* - Records your match and updates your overall ranking\n\t`match [myScore] [@opponent] [opponentScore]`\n\t_Example usage_: `match 21 <@pongpal> 5`\n"
 	historyInfo = "*_history_* - Lists your match history, defaults to a list of 10. Takes an optional limit parameter as an integer or 'all'\n\t`history [limit?]`\n"
 	statsInfo = "*_stats_* - Shows a player's stats, defaults to your stats. Can show a player's stats within a group, defaults to the entire company. Takes an optional player username parameter and an optional group parameter. \n\t`stats [@player?] [group?]`\n\t_Example usage_: `stats <@pongpal> bot-group`\n"
-	groupsInfo = "*_groups_* - Create a new group or view all existing groups. Creating a new group automatically adds you to the group\n\t Type `groups new [groupname]` to create a new group\n\t Type `groups view` to view all existing groups\n"
+	rankingsInfo = "*_rankings_* - Displays company-wide rankings, defaults to a list of the top 10 players at Lucid. Takes an optional player parameter, to display one player's rank. Also takes an optional limit parameter as an integer or 'all'. \n\t`rankings [@player?] [limit?]`\n"
+	groupsInfo = "*_groups_* - Create a new group or view all existing groups. Creating a new group automatically adds you to the group. Groups allow you to view group members' stats within the context of their group\n\t Type `groups new [groupname]` to create a new group\n\t Type `groups view` to view all existing groups\n"
 	membersInfo = "*_members_* - Add a list of members to a group or view all members in a group\n\tType `members add [groupname] [@member1] [@member2?] [@member3?] ...` to add new members to a group\n\tType `members view [groupname]` to view members of a group"
-	return 'text', helpInfo + statusInfo + matchInfo + historyInfo + statsInfo + groupsInfo + membersInfo
+	return 'text', helpInfo + statusInfo + matchInfo + historyInfo + statsInfo + rankingsInfo + groupsInfo + membersInfo
 
 def sendRoomStatus(message):
 	camera.capture('data/'+str(num)+'.jpg', resize=(1080, 811))
