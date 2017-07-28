@@ -1,11 +1,9 @@
 """ Commands handled by the slack bot """
 from datetime import datetime
-from init import Message, BOT_ID
+from init import Message, BOT_ID, sendMessage, sendConfirmation
 import os,logging,sqlite3,elo
 from beautifultable import BeautifulTable
 from elo import elo
-import init
-from init import sendMessage, sendConfirmation
 
 conn = sqlite3.connect('pingpong.db')
 c = conn.cursor()
@@ -57,7 +55,7 @@ def confirmMatch(message):
 	c.execute('UPDATE players SET ELO=? WHERE name=?;', [newEloTwo, playerTwo])
 	conn.commit()
 
-	return "text", "Thanks! I confirmed match number " + str(match) + " and updated player rankings."
+	return "text", "Thanks! I confirmed match #" + str(match) + " and updated player rankings."
 
 #message object has: channel to repond to, text of the command, user who sent the command
 def handleMatchInput(message):
