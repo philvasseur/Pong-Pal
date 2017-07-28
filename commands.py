@@ -293,7 +293,7 @@ def sendHelpOptions(message):
 	rankingsInfo = "*_rankings_* - Displays company-wide rankings, defaults to a list of the top 10 players at Lucid. Takes an optional player parameter or an optional limit parameter. The player parameter allows you to view one player's rank. The limit parameter should either be an integer or 'all'\n\t`rankings [@player?] [limit?]`\n"
 	groupsInfo = "*_groups_* - Create a new group or view all existing groups. Creating a new group automatically adds you to the group. Groups allow you to view group members' stats within the context of their group\n\t Type `groups new [groupname]` to create a new group\n\t Type `groups view` to view all existing groups\n"
 	membersInfo = "*_members_* - Add a list of members to a group, remove a list of members from a group, or view all members in a group\n\tType `members add [groupname] [@member1] [@member2?] [@member3?] ...` to add new members to a group\n\tType `members remove [groupname] [@member1] [@member2?] [@member3?] ...` to remove existing members from a group\n\tType `members view [groupname]` to view members of a group"
-	return 'text', helpInfo + statusInfo + notifyInfo + matchInfo + historyInfo + statsInfo + rankingsInfo + groupsInfo + membersInfo
+	return 'text', helpInfo + statusInfo + notifyInfo + matchInfo + confirmInfo + historyInfo + statsInfo + rankingsInfo + groupsInfo + membersInfo
 
 def checkRoomToSendNotifications():
 	c.execute("SELECT user_id FROM waitlist ORDER BY date")
