@@ -209,7 +209,9 @@ def sendRoomStatus(message):
 	filename = "room_status.jpg"
 	camera.capture(filename, resize=(1080, 811))
 	f = open(filename,"rb")
-	result = "It looks like the room is open!" if eval_single_img(filename) == 0 else "Sorry, looks like the room is being used!"
+	img_res = eval_single_img(filename)
+	print(img_res)
+	result = "It looks like the room is open!" if img_res == 0 else "Sorry, looks like the room is being used!"
 	sendMessage(result,message.channel)
 	return "file", {"comment":None,"filename":"However, check for yourself:","file":f}
 

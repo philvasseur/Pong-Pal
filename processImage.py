@@ -13,7 +13,7 @@ def get_single_img(file_path):
 	return pixels, width*height*3
 
 def eval_single_img(file_path):
-	image,size = get_single_img(path)
+	image,size = get_single_img(file_path)
 
 	with tf.Graph().as_default():
 		images_placeholder = tf.placeholder(tf.float32, shape=[None, size])
