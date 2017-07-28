@@ -38,4 +38,4 @@ def eval_single_img(file_path):
 if __name__ == '__main__':
 	while True:
 		path = raw_input("File Path: ")
-		eval_single_img(path)
+		print(eval_single_img(path))
