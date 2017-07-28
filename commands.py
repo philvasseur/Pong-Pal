@@ -190,7 +190,7 @@ def handleGroupsInput(message):
 		groupsList = ""
 		for g in groups:
 			groupsList = groupsList + g[0] + "\n"
-		return "text", "List of all pong groups at Lucid:\n" + groupsList
+		return "text", "List of all pong groups at Lucid:\n'''" + groupsList+"'''"
 	elif (action == "new" and len(commandArgs) == 3):
 		groupName = commandArgs[2]
 		c.execute('SELECT name FROM players WHERE user_id=?;', [message.sender_id])
@@ -225,13 +225,13 @@ def handleMembersInput(message):
 				c.execute("INSERT INTO groups VALUES (?, ?)", [m, groupName])
 				conn.commit()
 				membersAdded = membersAdded + "<@" + m + ">" + "\n"
-		return "text", "The following members were succesfully added to group " + groupName + ":\n" + membersAdded
+		return "text", "The following members were succesfully added to group *" + groupName + "*:\n" + membersAdded
 	elif (action == "view" and len(commandArgs) == 3):
 		c.execute("SELECT username FROM groups WHERE groupname=?", [groupName])
 		members = c.fetchall()
 		resultText = "Here are the members of group *" + groupName + "*:\n"
 		for row in members:
-			resultText = resultText + str(row[0]) + "\n"
+			resultText = resultText + "<@" + str(row[0]) + ">" + "\n"
 		return "text", resultText
 	else:
 		return "text", "Invalid members command. Type 'help' for more information."
