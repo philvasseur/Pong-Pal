@@ -321,7 +321,10 @@ def checkRoomToSendNotifications():
 		sendConfirmation("It looks like the room is open! Type `status` to check for yourself!",user_id)
 
 def addToWaitlist(message):
-	c.execute("INSERT OR IGNORE INTO waitlist VALUES(?,?)",(datetime.now(),message.sender_id))
+	try:
+		c.execute("INSERT INTO waitlist VALUES(?,?)",(datetime.now(),message.sender_id))
+	except sqlite3.IntegrityError:
+		return "text","You're already on the list! I'll keep checking and notify you when it's open!"
 	conn.commit()
 	return "text","I'll check every few minutes and send you a message if the room is free!"
 
