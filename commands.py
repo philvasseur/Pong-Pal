@@ -24,7 +24,9 @@ def confirmMatch(message):
 		return "text", "This is not a valid command! PLEASE use this format: " + correctFormat
 	match = commandArgs[1]
 	c.execute('SELECT confirmPermissions, playerOne, playerTwo, scoreOne, scoreTwo FROM matches WHERE matchNumber=?', [match])
-	players = c.fetchOne()
+	players = c.fetchone()
+	if players == None:
+		return "text", "Sorry, I can't find that match number to confirm it!"
 	playerWithPermission = players[0]
 	if playerWithPermission != message.sender_id:
 		return "text", "Sorry! Only <@" + playerWithPermission + "> can confirm match " + str(match) + "."
@@ -33,32 +35,26 @@ def confirmMatch(message):
 	playerOneScore = players[3]
 	playerTwoScore = players[4]
 	c.execute('SELECT user_id, ELO FROM players WHERE name=?', [playerOne])
-	playerOneIdElo = c.fetchOne()
+	playerOneIdElo = c.fetchone()
 	playerOneId = playerOneIdElo[0]
 	playerOneElo = playerOneIdElo[1]
-	c.execute('SELECT user_id, ELO FROM players WHERE name=?', [playerTwo])
-	playerTwoIdElo = c.fetchOne()
-	playerTwoId = playerTwoIdElo[0]
-	playerTwoElo = playerTwoIdElo[1]
+	c.execute('SELECT ELO FROM players WHERE name=?', [playerTwo])
+	playerTwoElo = c.fetchone()[0]
 
 	playerOneElo = playerOneElo if playerOneElo != None else 1200
 	playerTwoElo = playerTwoElo if playerTwoElo != None else 1200
 
 	""" calc new Elos here """
 	newEloOne, newEloTwo = elo(playerOneElo, playerTwoElo, playerOneScore, playerTwoScore)
-	playerOneRank = calculatePlayerRank(playerOneName)
-	playerTwoRank = calculatePlayerRank(playerTwoName)
+	playerOneRank = calculatePlayerRank(playerOne)
+	playerTwoRank = calculatePlayerRank(playerTwo)
 
-	c.execute('UPDATE matches SET confirmed=?,rankingOne=?, ELOOne=?,rankingTwo=?, ELOTwo=?, WHERE matchNumber=?', [1, playerOneRank, newEloOne, playerTwoRank, newEloTwo, match])
+	c.execute('UPDATE matches SET confirmed=?,rankingOne=?, ELOOne=?,rankingTwo=?, ELOTwo=? WHERE matchNumber=?', [1, playerOneRank, newEloOne, playerTwoRank, newEloTwo, match])
 
-	# If playerOne confirmed the results, then send message to playerTwo's channel, and vice versa
-	if playerOneId == message.sender_id:
-		sendConfirmation("Hello! Your opponent <@" + playerOne + "> confirmed the results of match number " + str(match) + ".", playerTwoId)
-	else:
-		sendConfirmation("Hello! Your opponent <@" + playerTwo + "> confirmed the results of match number " + str(match) + ".", playerOneId)
+	sendConfirmation("Your opponent <@" + playerTwo + "> confirmed the results of match #" + str(match) + ".", playerOneId)
 	
-	c.execute('UPDATE players SET ELO=? WHERE user_id=?;', [newEloOne, playerOneId])
-	c.execute('UPDATE players SET ELO=? WHERE user_id=?;', [newEloTwo, playerTwoId])
+	c.execute('UPDATE players SET ELO=? WHERE name=?;', [newEloOne, playerOne])
+	c.execute('UPDATE players SET ELO=? WHERE name=?;', [newEloTwo, playerTwo])
 	conn.commit()
 
 	return "text", "Thanks! I confirmed match number " + str(match) + " and updated player rankings."
@@ -102,7 +98,7 @@ def handleMatchInput(message):
 	playerOneName = playerOneRow[0]
 	playerTwoName = playerTwoRow[0]
 
-	c.execute('INSERT INTO matches (date, confirmPermissions, confirmed, playerOne, scoreOne, rankingOne, ELOOne, playerTwo, scoreTwo, rankingTwo, ELOTwo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [timeStamp, playerTwoName, 0, playerOneName, playerOneScore, None, None, playerTwoName, playerTwoScore, None, None])
+	c.execute('INSERT INTO matches (date, confirmPermissions, confirmed, playerOne, scoreOne, rankingOne, ELOOne, playerTwo, scoreTwo, rankingTwo, ELOTwo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [timeStamp, playerTwoId, 0, playerOneName, playerOneScore, None, None, playerTwoName, playerTwoScore, None, None])
 	c.execute('SELECT matchNumber FROM matches WHERE date=?', [timeStamp])
 	matchNum = c.fetchone()[0]
 	conn.commit()
@@ -118,7 +114,7 @@ def handleMatchInput(message):
 
 	result = "<@" + winnerName + ">" + " won! The score was " + str(winnerScore) + " - " + str(loserScore) + "."
 	sendConfirmation("Congrats on another match! Type `confirm " + str(matchNum) + "` to confirm the result: " + result, playerTwoId)
-	return "text", result + " Your score is awaiting confirmation from your opponent."
+	return "text", result + " Match #" + str(matchNum) + " is awaiting confirmation from your opponent."
 
 def calculatePlayerRank(playerName):
 	c.execute('SELECT COUNT(name) FROM players WHERE ELO > (SELECT ELO FROM players where name = ?);', [playerName])
@@ -182,12 +178,12 @@ def getMatchHistory(message):
 	results = c.fetchall()
 	if results == []:
 		return "text","Sorry, you have no previous matches!"
-	table = BeautifulTable()
-	table.column_headers = ["Date", "Player Names", "Score", "Winner","Post Match Elo"]
+	table = BeautifulTable(max_width=100)
+	table.column_headers = ["Match #","Date", "Player Names", "Score", "Winner","Post Match Elo"]
 	wins = 0
 	for result in results:
 		winner = result[4] if int(result[5]) > int(result[9]) else result[8]
-		table.append_row([datetime.strptime(result[1], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d'),result[4] + " vs " + result[8], str(result[5]) + " - " + str(result[9]), winner, str(int(result[7])) + " - " + str(int(result[11]))])
+		table.append_row([result[0],datetime.strptime(result[1], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d'),result[4] + " vs " + result[8], str(result[5]) + " - " + str(result[9]), winner, str(int(result[7])) + " - " + str(int(result[11]))])
 		if winner == username:
 			wins +=1
 	title = str(int(float(wins)/float(len(results)) * 100)) + "% Win-Rate Over " + str(len(results)) + " Games\n"
@@ -239,15 +235,15 @@ def getPlayerStats(message):
 		rank = calculatePlayerRankInGroup(username, groupId)
 		groupmembers = getGroupMembers(groupId)
 		question_marks = ','.join(['?'] * len(groupmembers))
-		c.execute('SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE playerOne=? AND playerTWO IN ('+ question_marks +') OR playerTwo=? AND playerOne IN (' + question_marks + ')',[username] + groupmembers + [username] + groupmembers)
+		c.execute('SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE confirmed = ? AND (playerOne=? AND playerTWO IN ('+ question_marks +') OR playerTwo=? AND playerOne IN (' + question_marks + '))',[1] + [username] + groupmembers + [username] + groupmembers)
 	else:
 		rank = calculatePlayerRank(username)
-		c.execute("SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE playerOne=? OR playerTwo=?",(username,username))
+		c.execute("SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE confirmed = ? AND (playerOne=? OR playerTwo=?)",(1,username,username))
 	results = c.fetchall()
 	wins, losses, ptDiff = calcStats(results, username)
-	table = BeautifulTable()
-	table.column_headers = ["ELO","Rank","Wins","Losses","Win-Rate","Point Diff", "Avg. Point Diff"]
-	table.append_row([ELO,rank,wins,losses,float(wins)/float(wins+losses),ptDiff,float(ptDiff)/float(wins+losses)])
+	table = BeautifulTable(max_width=100)
+	table.column_headers = ["Rank","Elo","Wins","Losses","Win-Rate","Point Diff", "Avg. Point Diff"]
+	table.append_row([rank,int(ELO),wins,losses,str(float(wins)/float(wins+losses)*100) + "%",ptDiff,float(ptDiff)/float(wins+losses)])
 	messageHeader = "Stats for <@" + username + ">"
 	if groupId:
 		messageHeader = messageHeader + " in group *" + groupId + "*"
