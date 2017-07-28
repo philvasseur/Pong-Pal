@@ -21,7 +21,7 @@ class Message(object):
 		self.isNewMessage = self.subtype == None and self.type == "message"
 
 def parseMessage(message):
-	commandMap = {"help":commands.sendHelpOptions,"match":commands.handleMatchInput,"status":commands.sendRoomStatus, "history":commands.getMatchHistory,'stats':commands.getStats,'groups':commands.handleGroupsInput,'members':commands.handleMembersInput,'confirm':commands.confirmMatch, 'rankings': commands.displayRankings}
+	commandMap = {"help":commands.sendHelpOptions,"match":commands.handleMatchInput,"status":commands.sendRoomStatus, "history":commands.getMatchHistory,'stats':commands.getStats,'groups':commands.handleGroupsInput,'members':commands.handleMembersInput,'confirm':commands.confirmMatch, 'rankings': commands.displayRankings, "notify": commands.addToWaitlist}
 	text = message.text
 	if len(text.split()) == 0:
 		sendMessage("Sorry, I didn't recognize your command. Type 'help' for a list of options.")
@@ -60,7 +60,13 @@ if __name__ == "__main__":
 		conn.commit()
 		conn.close()
 		print('PongPal - Connected and Ready To Go!')
+		count = 1
 		while(True):
+			if count % 180 == 0:
+				count = 1
+				commands.checkRoomToSendNotifications()
+
+
 			for event in slack.rtm_read():
 				msg = Message(event)
 				if msg.isNewMessage and msg.text.startswith("<@"+msg.receiver_id+">") and len(msg.text.split()) >= 2 and msg.text.split()[1] == 'rankings':
@@ -71,6 +77,7 @@ if __name__ == "__main__":
 					continue;
 				parseMessage(msg)
 			time.sleep(1)
+			count+=1
 	else:
 		print("Connection failed. Invalid Slack token or bot ID?")
 		conn.close()

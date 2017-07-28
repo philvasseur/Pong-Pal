@@ -14,7 +14,7 @@ try:
 	camera.vflip = True
 	camera.hflip = True
 except ImportError:
-	logging.warning(' Failing to import picamera. DO NOT USE STATUS COMMAND.')
+	logging.warning(' Failing to import picamera. DO NOT USE STATUS OR NOTIFY COMMAND.')
 
 def confirmMatch(message):
 	correctFormat = "confirm [matchNumber]"
@@ -285,13 +285,37 @@ def handleMembersInput(message):
 def sendHelpOptions(message):
 	helpInfo = "Commands:\n*_help_* - Lists these commands here :table_tennis_paddle_and_ball:\n"
 	statusInfo = "*_status_* - Sends you a picture of the current status of the ping-pong room\n"
+	notifyInfo = "*_notify_* - Notifies you when the room becomes free\n"
 	matchInfo = "*_match_* - Records your match and updates your overall ranking\n\t`match [myScore] [@opponent] [opponentScore]`\n\t_Example usage_: `match 21 <@pongpal> 5`\n"
 	historyInfo = "*_history_* - Lists your match history, defaults to a list of 10. Takes an optional limit parameter as an integer or 'all'\n\t`history [limit?]`\n"
 	statsInfo = "*_stats_* - Shows a player's stats, defaults to your stats. Can show a player's stats within a group, defaults to the entire company. Takes an optional player username parameter and an optional group parameter. \n\t`stats [@player?] [group?]`\n\t_Example usage_: `stats <@pongpal> bot-group`\n"
 	rankingsInfo = "*_rankings_* - Displays company-wide rankings, defaults to a list of the top 10 players at Lucid. Takes an optional player parameter or an optional limit parameter. The player parameter allows you to view one player's rank. The limit parameter should either be an integer or 'all'\n\t`rankings [@player?] [limit?]`\n"
 	groupsInfo = "*_groups_* - Create a new group or view all existing groups. Creating a new group automatically adds you to the group. Groups allow you to view group members' stats within the context of their group\n\t Type `groups new [groupname]` to create a new group\n\t Type `groups view` to view all existing groups\n"
 	membersInfo = "*_members_* - Add a list of members to a group, remove a list of members from a group, or view all members in a group\n\tType `members add [groupname] [@member1] [@member2?] [@member3?] ...` to add new members to a group\n\tType `members remove [groupname] [@member1] [@member2?] [@member3?] ...` to remove existing members from a group\n\tType `members view [groupname]` to view members of a group"
-	return 'text', helpInfo + statusInfo + matchInfo + historyInfo + statsInfo + rankingsInfo + groupsInfo + membersInfo
+	return 'text', helpInfo + statusInfo + notifyInfo + matchInfo + historyInfo + statsInfo + rankingsInfo + groupsInfo + membersInfo
+
+def checkRoomToSendNotifications():
+	c.execute("SELECT user_id FROM waitlist ORDER BY date")
+	waitlist = c.fetchall()
+	if len(waitlist) == 0:
+		print("No one on waitlist")
+		return
+	filename = "room_status.jpg"
+	camera.capture(filename, resize=(1080, 811))
+	img_res = eval_single_img(filename)
+	if img_res == 1:
+		print("Room Not Empty")
+		return
+	c.execute("DELETE FROM waitlist")
+	conn.commit()
+	for row in waitlist:
+		user_id = row[0]
+		sendConfirmation("It looks like the room is open! Type `status` to check for yourself!",user_id)
+
+def addToWaitlist(message):
+	c.execute("INSERT OR IGNORE INTO waitlist VALUES(?,?)",(datetime.now(),message.sender_id))
+	conn.commit()
+	return "text","I'll check every few minutes and send you a message if the room is free!"
 
 def sendRoomStatus(message):
 	filename = "room_status.jpg"
@@ -394,7 +418,6 @@ def getStats(message):
 	else:
 		c.execute("SELECT name,ELO FROM players WHERE user_id=?",(message.sender_id,))
 		playerInfo = c.fetchone()
-
 	if statsForGroup:
 		return getGroupStats(group)
 	else: 
