@@ -132,8 +132,9 @@ def calculatePlayerRankInGroup(playerName, groupName):
 	rank = c.fetchone()[0] 
 	return rank + 1
 
+# returns in sorted descending order by ELO
 def getGroupMembers(groupName):
-	c.execute('SELECT username FROM groups WHERE groupname=?', [groupName])
+	c.execute('SELECT username FROM groups, players WHERE groupname=? AND name=username ORDER BY ELO DESC', [groupName])
 	rows = c.fetchall()
 	memberlist = []
 	for row in rows:
@@ -187,9 +188,13 @@ def handleGroupsInput(message):
 		c.execute('SELECT DISTINCT groupname from groups;')
 		groups = c.fetchall()
 		groupsList = ""
+		numGroups = 0
 		for g in groups:
 			groupsList = groupsList + g[0] + "\n"
-		return "text", "List of all pong groups at Lucid:\n'''" + groupsList+"'''"
+			numGroups += 1
+		if numGroups == 0:
+			return "text", "No groups have been created yet!"
+		return "text", "List of all pong groups at Lucid:\n```" + groupsList+"```"
 	elif (action == "new" and len(commandArgs) == 3):
 		groupName = commandArgs[2]
 		c.execute('SELECT name FROM players WHERE user_id=?;', [message.sender_id])
@@ -205,10 +210,13 @@ def handleMembersInput(message):
 		return "text", "Invalid members command. Type 'help' for more information."
 	action = commandArgs[1]
 	groupName = commandArgs[2]
+	if (action != "add" and action != "remove" and action != "view"):
+		return "text", action + " is not a valid subcommand of 'members'. Type 'help' for more information."
+	action = commandArgs[1]
 	c.execute("SELECT groupname FROM groups WHERE groupname=?", [groupName])
 	results = c.fetchone()
 	if (results == None):
-		return "text", "This group doesn't exist!"
+		return "text", "There is no group called " + groupName + "!"
 	if (action == "add" and len(commandArgs) > 3):
 		memberlist = getMembersFromCommand(commandArgs[3:])
 		membersAdded = ""
@@ -232,9 +240,36 @@ def handleMembersInput(message):
 				numDuplicates += 1
 		responseMsg = ""
 		if (numAdded > 0):
-			responseMsg = responseMsg + "The following " + str(numAdded) + " member(s) have been succesfully added to group *" + groupName + "*:\n" + membersAdded + "\n"
+			responseMsg = responseMsg + "The following " + str(numAdded) + " member(s) have been succesfully added to group *" + groupName + "*:\n```" + membersAdded + "```\n"
 		if (numDuplicates > 0):
-			responseMsg = responseMsg + "The following " + str(numDuplicates) + " player(s) were already in the group:\n" + duplicates
+			responseMsg = responseMsg + "The following " + str(numDuplicates) + " player(s) were already in the group:\n```" + duplicates + "```"
+		return "text",  responseMsg
+	elif (action == "remove" and len(commandArgs) > 3):
+		memberlist = getMembersFromCommand(commandArgs[3:])
+		membersDeleted = ""
+		numDeleted = 0
+		membersNotInGroup = ""
+		numNotInGroup = 0
+		for m in memberlist:
+			c.execute("SELECT groupname FROM groups WHERE username=?", [m])
+			groups = c.fetchall()
+			alreadyInGroup = False
+			for g in groups:
+				if g[0] == groupName:
+					alreadyInGroup = True
+			if (alreadyInGroup):
+				c.execute("DELETE FROM groups WHERE username=? AND groupname=?", [m, groupName])
+				conn.commit()
+				membersDeleted = membersDeleted + "<@" + m + ">" + "\n"
+				numDeleted += 1
+			else:
+				membersNotInGroup = membersNotInGroup + "<@" + m + ">" + "\n"
+				numNotInGroup += 1
+		responseMsg = ""
+		if (numDeleted > 0):
+			responseMsg = responseMsg + "The following " + str(numDeleted) + " member(s) have been succesfully removed from group *" + groupName + "*:\n```" + membersDeleted + "```\n"
+		if (numNotInGroup > 0):
+			responseMsg = responseMsg + "The following " + str(numNotInGroup) + " player(s) were not in the group:\n```" + membersNotInGroup + "```"
 		return "text",  responseMsg
 	elif (action == "view" and len(commandArgs) == 3):
 		c.execute("SELECT username FROM groups WHERE groupname=?", [groupName])
@@ -253,9 +288,9 @@ def sendHelpOptions(message):
 	matchInfo = "*_match_* - Records your match and updates your overall ranking\n\t`match [myScore] [@opponent] [opponentScore]`\n\t_Example usage_: `match 21 <@pongpal> 5`\n"
 	historyInfo = "*_history_* - Lists your match history, defaults to a list of 10. Takes an optional limit parameter as an integer or 'all'\n\t`history [limit?]`\n"
 	statsInfo = "*_stats_* - Shows a player's stats, defaults to your stats. Can show a player's stats within a group, defaults to the entire company. Takes an optional player username parameter and an optional group parameter. \n\t`stats [@player?] [group?]`\n\t_Example usage_: `stats <@pongpal> bot-group`\n"
-	rankingsInfo = "*_rankings_* - Displays company-wide rankings, defaults to a list of the top 10 players at Lucid. Takes an optional player parameter, to display one player's rank. Also takes an optional limit parameter as an integer or 'all'. \n\t`rankings [@player?] [limit?]`\n"
+	rankingsInfo = "*_rankings_* - Displays company-wide rankings, defaults to a list of the top 10 players at Lucid. Takes an optional player parameter or an optional limit parameter. The player parameter allows you to view one player's rank. The limit parameter should either be an integer or 'all'\n\t`rankings [@player?] [limit?]`\n"
 	groupsInfo = "*_groups_* - Create a new group or view all existing groups. Creating a new group automatically adds you to the group. Groups allow you to view group members' stats within the context of their group\n\t Type `groups new [groupname]` to create a new group\n\t Type `groups view` to view all existing groups\n"
-	membersInfo = "*_members_* - Add a list of members to a group or view all members in a group\n\tType `members add [groupname] [@member1] [@member2?] [@member3?] ...` to add new members to a group\n\tType `members view [groupname]` to view members of a group"
+	membersInfo = "*_members_* - Add a list of members to a group, remove a list of members from a group, or view all members in a group\n\tType `members add [groupname] [@member1] [@member2?] [@member3?] ...` to add new members to a group\n\tType `members remove [groupname] [@member1] [@member2?] [@member3?] ...` to remove existing members from a group\n\tType `members view [groupname]` to view members of a group"
 	return 'text', helpInfo + statusInfo + notifyInfo + matchInfo + historyInfo + statsInfo + rankingsInfo + groupsInfo + membersInfo
 
 def checkRoomToSendNotifications():
@@ -321,9 +356,29 @@ def getMatchHistory(message):
 	title = str(int(float(wins)/float(len(results)) * 100)) + "% Win-Rate Over " + str(len(results)) + " Games\n"
 	return "text", title+"```"+str(table)+"```"
 
-def getPlayerStats(message):
+def getGroupStats(group):
+	table = BeautifulTable(max_width=100)
+	table.column_headers = ["Player Name","Rank","Elo","Wins","Losses","Win-Rate","Point Diff", "Avg. Point Diff"]
+	members = getGroupMembers(group)
+	question_marks = ','.join(['?'] * len(members))
+	# members is sorted
+	index = 0
+	for m in members:
+		c.execute('SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE confirmed=? AND (playerOne=? AND playerTWO IN ('+ question_marks +') OR playerTwo=? AND playerOne IN (' + question_marks + '))',[1] + [m] + members + [m] + members)
+		results = c.fetchall()
+		if results != []:
+			index += 1
+			c.execute('SELECT ELO FROM players WHERE name=?', (m,))
+			ELO = c.fetchone()[0]
+			wins, losses, ptDiff = calcStats(results, m)
+			table.append_row([m, index,int(ELO),wins,losses,str(float(wins)/float(wins+losses)*100) + "%",ptDiff,float(ptDiff)/float(wins+losses)])
+	if index == 0:
+		return "text", "No match history available for members of this group"
+	return "text", "Stats for group *" + group + "*:\n```"+str(table)+"```"
+
+def getStats(message):
 	commandArgs = message.text.split()
-	groupId = None
+	group = None
 	playerIsYou = True
 	statsForGroup = False
 	if len(commandArgs) > 3:
@@ -336,8 +391,8 @@ def getPlayerStats(message):
 		c.execute("SELECT name,ELO FROM players WHERE user_id=?",(playerId,))
 		playerInfo = c.fetchone()
 		playerIsYou = False
-		groupId = commandArgs[2]
-		c.execute('SELECT groupname FROM groups WHERE groupname=?', (groupId,))
+		group = commandArgs[2]
+		c.execute('SELECT groupname FROM groups WHERE groupname=?', (group,))
 		result = c.fetchone()
 		if (result == None):
 			return "text", "The group you entered doesn't exist!"
@@ -349,9 +404,8 @@ def getPlayerStats(message):
 			if (result == None):
 				return "text", "The optional argument you entered is neither a valid user nor a valid group. Type 'help' for more information."
 			else:
-				groupId = optionalArg
-				c.execute("SELECT name,ELO FROM players WHERE user_id=?",(message.sender_id,))
-				playerInfo = c.fetchone()
+				group = optionalArg
+				statsForGroup = True
 		else:
 			playerIsYou = False
 			playerId = optionalArg.strip('<@>')
@@ -362,31 +416,33 @@ def getPlayerStats(message):
 	else:
 		c.execute("SELECT name,ELO FROM players WHERE user_id=?",(message.sender_id,))
 		playerInfo = c.fetchone()
-
-	username = playerInfo[0]
-	ELO = playerInfo[1]
-	if groupId:
-		rank = calculatePlayerRankInGroup(username, groupId)
-		groupmembers = getGroupMembers(groupId)
-		question_marks = ','.join(['?'] * len(groupmembers))
-		c.execute('SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE confirmed=? AND (playerOne=? AND playerTWO IN ('+ question_marks +') OR playerTwo=? AND playerOne IN (' + question_marks + '))',[1] + [username] + groupmembers + [username] + groupmembers)
-	else:
-		rank = calculatePlayerRank(username)
-		c.execute("SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE confirmed = ? AND (playerOne=? OR playerTwo=?)",(1,username,username))
-	results = c.fetchall()
-	if results == []:
-		if playerIsYou:
-			return "text", "Sorry, you have no previous matches!"
+	if statsForGroup:
+		return getGroupStats(group)
+	else: 
+		username = playerInfo[0]
+		ELO = playerInfo[1]
+		if group:
+			rank = calculatePlayerRankInGroup(username, group)
+			groupmembers = getGroupMembers(group)
+			question_marks = ','.join(['?'] * len(groupmembers))
+			c.execute('SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE confirmed=? AND (playerOne=? AND playerTWO IN ('+ question_marks +') OR playerTwo=? AND playerOne IN (' + question_marks + '))',[1] + [username] + groupmembers + [username] + groupmembers)
 		else:
-			return "text", "Sorry, <@" + username + '> has no previous matches!' 
-	wins, losses, ptDiff = calcStats(results, username)
-	table = BeautifulTable(max_width=100)
-	table.column_headers = ["Rank","Elo","Wins","Losses","Win-Rate","Point Diff", "Avg. Point Diff"]
-	table.append_row([rank,int(ELO),wins,losses,str(float(wins)/float(wins+losses)*100) + "%",ptDiff,float(ptDiff)/float(wins+losses)])
-	messageHeader = "Stats for <@" + username + ">"
-	if groupId:
-		messageHeader = messageHeader + " in group *" + groupId + "*"
-	return "text", messageHeader + "\n```"+str(table)+"```"
+			rank = calculatePlayerRank(username)
+			c.execute("SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE confirmed = ? AND (playerOne=? OR playerTwo=?)",(1,username,username))
+		results = c.fetchall()
+		if results == []:
+			if playerIsYou:
+				return "text", "Sorry, you have no previous matches!"
+			else:
+				return "text", "Sorry, <@" + username + '> has no previous matches!' 
+		wins, losses, ptDiff = calcStats(results, username)
+		table = BeautifulTable(max_width=100)
+		table.column_headers = ["Rank","Elo","Wins","Losses","Win-Rate","Point Diff", "Avg. Point Diff"]
+		table.append_row([rank,int(ELO),wins,losses,str(float(wins)/float(wins+losses)*100) + "%",ptDiff,float(ptDiff)/float(wins+losses)])
+		messageHeader = "Stats for <@" + username + ">"
+		if group:
+			messageHeader = messageHeader + " in group *" + group + "*"
+		return "text", messageHeader + "\n```"+str(table)+"```"
 
 def calcStats(results, username):
 	wins = 0
