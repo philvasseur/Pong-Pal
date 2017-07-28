@@ -304,8 +304,8 @@ def sendHelpOptions(message):
 	membersInfo = "*_members_* - Add a list of members to a group, remove a list of members from a group, or view all members in a group\n\tType `members add [groupname] [@member1] [@member2?] [@member3?] ...` to add new members to a group\n\tType `members remove [groupname] [@member1] [@member2?] [@member3?] ...` to remove existing members from a group\n\tType `members view [groupname]` to view members of a group"
 	return 'text', helpInfo + statusInfo + notifyInfo + matchInfo + confirmInfo + historyInfo + statsInfo + rankingsInfo + groupsInfo + membersInfo
 
-def checkRoomToSendNotifications():
-	c.execute("SELECT user_id FROM waitlist ORDER BY date")
+def checkRoomToSendNotifications(ignoreId=None):
+	c.execute("SELECT user_id FROM waitlist WHERE user_id != ? ORDER BY date",(ignoreId))
 	waitlist = c.fetchall()
 	if len(waitlist) == 0:
 		return
@@ -318,7 +318,7 @@ def checkRoomToSendNotifications():
 	conn.commit()
 	for row in waitlist:
 		user_id = row[0]
-		sendConfirmation("It looks like the room is open! Type `status` to check for yourself!",user_id)
+		sendConfirmation("Hey! It looks like the ping pong room is open! Type `status` to check for yourself!",user_id)
 
 def addToWaitlist(message):
 	try:
@@ -335,7 +335,7 @@ def sendRoomStatus(message):
 	img_res = eval_single_img(filename)
 	if img_res == 0:
 		result = "It looks like the room is open!"
-		checkRoomToSendNotifications()
+		checkRoomToSendNotifications(message.sender_id)
 	else:
 		result = "Sorry, looks like the room is being used! If you want to be notified when it's free, type `notify`."
 	return "file", {"comment":result,"filename":"Room Status:","file":f}
