@@ -110,14 +110,16 @@ def handleMatchInput(message):
 
 	if (playerTwoScore > playerOneScore):
 		winnerName = playerTwoName
+		loserName = playerOneName
 		winnerScore = playerTwoScore
 		loserScore = playerOneScore
 	else:
 		winnerName = playerOneName
+		loserName = playerTwoName
 		winnerScore = playerOneScore
 		loserScore = playerTwoScore
 
-	result = "<@" + winnerName + ">" + " won! The score was " + str(winnerScore) + " - " + str(loserScore) + "."
+	result = "<@" + winnerName + ">" + " won against <@" + loserName + ">! The score was " + str(winnerScore) + " - " + str(loserScore) + "."
 	sendConfirmation("Congrats on another match! Type `confirm " + str(matchNum) + "` to confirm the result: " + result, playerTwoId)
 	return "text", result + " Match #" + str(matchNum) + " is awaiting confirmation from your opponent."
 
