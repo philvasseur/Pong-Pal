@@ -43,6 +43,7 @@ def sendMessage(text,channel):
 	slack.server.send_to_websocket({"type": "message", "channel": channel, "markdwn": True, "text": text})
 
 def sendConfirmation(text, opponentId):
+	#slack.server.send_to_websocket({"type": "message", "channel": opponentId, "markdwn": True, "as_user": True, "text": text})
 	slack.api_call(
 		"chat.postMessage",
 		channel=opponentId,
