@@ -1,11 +1,11 @@
-import os
+import os, logging
 try:
 	import tensorflow as tf
 	from PIL import Image
 	import numpy as np
 	os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 except ImportError:
-	logging.warning('Failed to import tensorflow. DO NOT USE STATUS COMMAND.')
+	logging.warning('Failed to import tensorflow. DO NOT USE STATUS OR NOTIFY COMMAND.')
 
 
 def get_single_img(file_path):
