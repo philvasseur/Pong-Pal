@@ -155,7 +155,9 @@ def handleGroupsInput(message):
 		return "text", "List of all pong groups at Lucid:\n" + groupsList
 	elif (action == "new" and len(commandArgs) == 3):
 		groupName = commandArgs[2]
-		createGroup(groupName, message.sender_id)
+		c.execute('SELECT name FROM players WHERE user_id=?;', [message.sender_id])
+		userName = c.fetchone()[0]
+		createGroup(groupName, userName)
 		return "text", "Congrats, you have created a new group called *" + groupName + "*!"
 	else:
 		return "text", "Invalid groups command. Type 'help' for more information."
@@ -246,6 +248,7 @@ def getMatchHistory(message):
 def getPlayerStats(message):
 	commandArgs = message.text.split()
 	groupId = None
+	playerIsYou = True
 	if len(commandArgs) > 3:
 		return "text", "Invalid format. Type 'help' for more information."
 	elif len(commandArgs) == 3:
@@ -253,10 +256,9 @@ def getPlayerStats(message):
 		if (not isValidUserName(playerId)):
 			return "text", "Invalid command. Please tag a player using the '@' symbol. Type 'help' for more information."
 		playerId = playerId.strip('<@>')
-		print(playerId)
 		c.execute("SELECT name,ELO FROM players WHERE user_id=?",(playerId,))
 		playerInfo = c.fetchone()
-		print(playerInfo)
+		playerIsYou = False
 		groupId = commandArgs[2]
 		c.execute('SELECT groupname FROM groups WHERE groupname=?', (groupId,))
 		result = c.fetchone()
@@ -274,6 +276,7 @@ def getPlayerStats(message):
 				c.execute("SELECT name,ELO FROM players WHERE user_id=?",(message.sender_id,))
 				playerInfo = c.fetchone()
 		else:
+			playerIsYou = False
 			playerId = optionalArg.strip('<@>')
 			c.execute("SELECT name,ELO FROM players WHERE user_id=?",(playerId,))
 			playerInfo = c.fetchone()
@@ -288,14 +291,18 @@ def getPlayerStats(message):
 	if groupId:
 		rank = calculatePlayerRankInGroup(username, groupId)
 		groupmembers = getGroupMembers(groupId)
+		print(groupmembers)
 		question_marks = ','.join(['?'] * len(groupmembers))
-		c.execute('SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE confirmed = ? AND (playerOne=? AND playerTWO IN ('+ question_marks +') OR playerTwo=? AND playerOne IN (' + question_marks + '))',[1] + [username] + groupmembers + [username] + groupmembers)
+		c.execute('SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE confirmed=? AND (playerOne=? AND playerTWO IN ('+ question_marks +') OR playerTwo=? AND playerOne IN (' + question_marks + '))',[1] + [username] + groupmembers + [username] + groupmembers)
 	else:
 		rank = calculatePlayerRank(username)
 		c.execute("SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE confirmed = ? AND (playerOne=? OR playerTwo=?)",(1,username,username))
 	results = c.fetchall()
 	if results == []:
-		return "text", "Sorry, you have no previous matches!"
+		if playerIsYou:
+			return "text", "Sorry, you have no previous matches!"
+		else:
+			return "text", "Sorry, <@" + username + '> has no previous matches!' 
 	wins, losses, ptDiff = calcStats(results, username)
 	table = BeautifulTable(max_width=100)
 	table.column_headers = ["Rank","Elo","Wins","Losses","Win-Rate","Point Diff", "Avg. Point Diff"]
