@@ -132,8 +132,9 @@ def calculatePlayerRankInGroup(playerName, groupName):
 	rank = c.fetchone()[0] 
 	return rank + 1
 
+# returns in sorted descending order by ELO
 def getGroupMembers(groupName):
-	c.execute('SELECT username FROM groups WHERE groupname=?', [groupName])
+	c.execute('SELECT username FROM groups, players WHERE groupname=? AND name=username ORDER BY ELO DESC', [groupName])
 	rows = c.fetchall()
 	memberlist = []
 	for row in rows:
@@ -286,9 +287,27 @@ def getMatchHistory(message):
 	title = str(int(float(wins)/float(len(results)) * 100)) + "% Win-Rate Over " + str(len(results)) + " Games\n"
 	return "text", title+"```"+str(table)+"```"
 
-def getPlayerStats(message):
+def getGroupStats(group):
+	table = BeautifulTable(max_width=100)
+	table.column_headers = ["Player Name","Rank","Elo","Wins","Losses","Win-Rate","Point Diff", "Avg. Point Diff"]
+	members = getGroupMembers(group)
+	question_marks = ','.join(['?'] * len(members))
+	# members is sorted
+	index = 0
+	for m in members:
+		c.execute('SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE confirmed=? AND (playerOne=? AND playerTWO IN ('+ question_marks +') OR playerTwo=? AND playerOne IN (' + question_marks + '))',[1] + [m] + members + [m] + members)
+		results = c.fetchall()
+		if results != []:
+			index += 1
+			c.execute('SELECT ELO FROM players WHERE name=?', (m,))
+			ELO = c.fetchone()[0]
+			wins, losses, ptDiff = calcStats(results, m)
+			table.append_row([m, index,int(ELO),wins,losses,str(float(wins)/float(wins+losses)*100) + "%",ptDiff,float(ptDiff)/float(wins+losses)])
+	return "text", "Stats for group *" + group + "*:\n```"+str(table)+"```"
+
+def getStats(message):
 	commandArgs = message.text.split()
-	groupId = None
+	group = None
 	playerIsYou = True
 	statsForGroup = False
 	if len(commandArgs) > 3:
@@ -301,8 +320,8 @@ def getPlayerStats(message):
 		c.execute("SELECT name,ELO FROM players WHERE user_id=?",(playerId,))
 		playerInfo = c.fetchone()
 		playerIsYou = False
-		groupId = commandArgs[2]
-		c.execute('SELECT groupname FROM groups WHERE groupname=?', (groupId,))
+		group = commandArgs[2]
+		c.execute('SELECT groupname FROM groups WHERE groupname=?', (group,))
 		result = c.fetchone()
 		if (result == None):
 			return "text", "The group you entered doesn't exist!"
@@ -314,9 +333,8 @@ def getPlayerStats(message):
 			if (result == None):
 				return "text", "The optional argument you entered is neither a valid user nor a valid group. Type 'help' for more information."
 			else:
-				groupId = optionalArg
-				c.execute("SELECT name,ELO FROM players WHERE user_id=?",(message.sender_id,))
-				playerInfo = c.fetchone()
+				group = optionalArg
+				statsForGroup = True
 		else:
 			playerIsYou = False
 			playerId = optionalArg.strip('<@>')
@@ -328,31 +346,33 @@ def getPlayerStats(message):
 		c.execute("SELECT name,ELO FROM players WHERE user_id=?",(message.sender_id,))
 		playerInfo = c.fetchone()
 
-	username = playerInfo[0]
-	ELO = playerInfo[1]
-	if groupId:
-		rank = calculatePlayerRankInGroup(username, groupId)
-		groupmembers = getGroupMembers(groupId)
-		print(groupmembers)
-		question_marks = ','.join(['?'] * len(groupmembers))
-		c.execute('SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE confirmed=? AND (playerOne=? AND playerTWO IN ('+ question_marks +') OR playerTwo=? AND playerOne IN (' + question_marks + '))',[1] + [username] + groupmembers + [username] + groupmembers)
-	else:
-		rank = calculatePlayerRank(username)
-		c.execute("SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE confirmed = ? AND (playerOne=? OR playerTwo=?)",(1,username,username))
-	results = c.fetchall()
-	if results == []:
-		if playerIsYou:
-			return "text", "Sorry, you have no previous matches!"
+	if statsForGroup:
+		return getGroupStats(group)
+	else: 
+		username = playerInfo[0]
+		ELO = playerInfo[1]
+		if group:
+			rank = calculatePlayerRankInGroup(username, group)
+			groupmembers = getGroupMembers(group)
+			question_marks = ','.join(['?'] * len(groupmembers))
+			c.execute('SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE confirmed=? AND (playerOne=? AND playerTWO IN ('+ question_marks +') OR playerTwo=? AND playerOne IN (' + question_marks + '))',[1] + [username] + groupmembers + [username] + groupmembers)
 		else:
-			return "text", "Sorry, <@" + username + '> has no previous matches!' 
-	wins, losses, ptDiff = calcStats(results, username)
-	table = BeautifulTable(max_width=100)
-	table.column_headers = ["Rank","Elo","Wins","Losses","Win-Rate","Point Diff", "Avg. Point Diff"]
-	table.append_row([rank,int(ELO),wins,losses,str(float(wins)/float(wins+losses)*100) + "%",ptDiff,float(ptDiff)/float(wins+losses)])
-	messageHeader = "Stats for <@" + username + ">"
-	if groupId:
-		messageHeader = messageHeader + " in group *" + groupId + "*"
-	return "text", messageHeader + "\n```"+str(table)+"```"
+			rank = calculatePlayerRank(username)
+			c.execute("SELECT playerOne,scoreOne,playerTwo,scoreTwo FROM matches WHERE confirmed = ? AND (playerOne=? OR playerTwo=?)",(1,username,username))
+		results = c.fetchall()
+		if results == []:
+			if playerIsYou:
+				return "text", "Sorry, you have no previous matches!"
+			else:
+				return "text", "Sorry, <@" + username + '> has no previous matches!' 
+		wins, losses, ptDiff = calcStats(results, username)
+		table = BeautifulTable(max_width=100)
+		table.column_headers = ["Rank","Elo","Wins","Losses","Win-Rate","Point Diff", "Avg. Point Diff"]
+		table.append_row([rank,int(ELO),wins,losses,str(float(wins)/float(wins+losses)*100) + "%",ptDiff,float(ptDiff)/float(wins+losses)])
+		messageHeader = "Stats for <@" + username + ">"
+		if group:
+			messageHeader = messageHeader + " in group *" + group + "*"
+		return "text", messageHeader + "\n```"+str(table)+"```"
 
 def calcStats(results, username):
 	wins = 0
