@@ -17,7 +17,7 @@ class Message(object):
 		self.subtype = body.get("subtype")
 		self.sender_id = body.get("user")
 		self.receiver_id = BOT_ID
-		self.isDM = self.channel and isinstance(self.channel,str) and self.channel[0] == 'D'
+		self.isDM = self.channel and str(self.channel)[0] == 'D'
 		self.isNewMessage = self.subtype == None and self.type == "message"
 
 def parseMessage(message):
