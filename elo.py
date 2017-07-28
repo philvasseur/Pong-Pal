@@ -4,6 +4,10 @@
 # See https://en.wikipedia.org/wiki/Elo_rating_system
 
 from __future__ import division
+import sqlite3
+
+conn = sqlite3.connect('pingpong.db')
+c = conn.cursor()
 
 def expected(eloA, eloB):
     """
@@ -15,7 +19,7 @@ def expected(eloA, eloB):
     return 1 / (1 + 10 ** ((eloB - eloA) / 400))
 
 # Returns the two new Elo values in a tuple: (newA, newB)
-def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
+def elo(eloA, eloB, scoreA, scoreB, k=32):
     """
     Calculate the new Elo rating for a player
     :param eloA: The previous Elo rating for player A
@@ -24,10 +28,14 @@ def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
     :param scoreB: Score of Player B
     :param k: The k-factor for Elo, used as a scalar (default: 32)
     :param eloMax: The max rating in the company (default: 3000)
-
+    
+    Lost points are based on original ELO algorithm (expected match result and relative ELO rankings).
+    Gained points are also based on game point differential and company ranking.
     """
+    c.execute('SELECT max(ELO) from players')
+    eloMax = c.fetchone()[0]
 
-    if eloMax < 1800:
+    if eloMax <= 1800:
         eloMax = 3000
 
     # Calculated expected score of this match
@@ -40,8 +48,9 @@ def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
     diff = abs(scoreA - scoreB)
     flag = 1
 
-    regularA = round(eloA + k * (wonA - expA), 3)
-    regularB = round(eloB + k * (wonB - expB), 3)
+    # Calculated ELO scores without factoring in game point differential
+    regularA = baseA = eloA + k * (wonA - expA)
+    regularB = baseB = eloB + k * (wonB - expB)
 
     # Span is the distance beyond the base score
     spanA = abs(regularA - eloA) / 3
@@ -51,24 +60,17 @@ def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
     stepA = spanA / (0.5 * scoreMax)
     stepB = spanB / (0.5 * scoreMax)
 
-    # Calculate new base ELO score before factoring in game score
+    # Update ELO based on company ranking so that the player does not gain as much at higher levels
     if wonA:
-        baseA = regularA + spanA * (1 - (wonA * (eloA / eloMax)))
-        baseB = regularB
+        baseA += spanA * (1 - (wonA * (eloA / eloMax)))
     else:
-        baseA = regularA
-        print "baseB would be " + str(regularB)
-        baseB = regularB + spanB * (1 - (wonB * (eloB / eloMax)))
+        baseB += spanB * (1 - (wonB * (eloB / eloMax)))
 
     score = scoreA if scoreA < scoreB else scoreB
     changeA = stepA * (score - 0.5 * scoreMax) if wonA else 0
     changeB = stepB * (score - 0.5 * scoreMax) if wonB else 0
     if scoreA > scoreB:
         flag *= -1
-
-    # Calculated ELO scores without factoring in game point differential
-    # newA = baseA
-    # newB = baseB
 
     # New ELO scores factoring in game point differential
     newA = round(baseA + flag * changeA, 3)
@@ -86,16 +88,16 @@ def elo(eloA, eloB, scoreA, scoreB, k=32, eloMax=3000):
     # print "wonA " + str(wonA)
     # print "wonB " + str(wonB)
     # print "lower score: " + str(score)
-    print "score diff: " + str(diff)
-    print "oldA, oldB: " + str(eloA) + ", " + str(eloB)
-    print "regularA, regularB: " + str(regularA) + ", " + str(regularB)
-    print "newA, newB: " + str(newA) + ", " + str(newB)
-    gained = abs(newA - eloA)
-    lost = abs(newB - eloB)
-    print "winner regular gained, new gained: " + str(abs(regularA - eloA)) + ", " + str(gained)
-    print "loser regular lost, new lost: " + str(abs(regularB - eloB)) + ", " + str(lost)
-    print "lost points to gained points ratio: " + str(lost / gained)
-    print "total point swing: " + str(gained + lost)
+    # print "score diff: " + str(diff)
+    # print "oldA, oldB: " + str(eloA) + ", " + str(eloB)
+    # print "regularA, regularB: " + str(regularA) + ", " + str(regularB)
+    # print "newA, newB: " + str(newA) + ", " + str(newB)
+    # gained = abs(newA - eloA)
+    # lost = abs(newB - eloB)
+    # print "winner regular gained, new gained: " + str(abs(regularA - eloA)) + ", " + str(gained)
+    # print "loser regular lost, new lost: " + str(abs(regularB - eloB)) + ", " + str(lost)
+    # print "lost points to gained points ratio: " + str(lost / gained)
+    # print "total point swing: " + str(gained + lost)
     return newA, newB 
 
 # print "Match 1: higher rank A wins big"
