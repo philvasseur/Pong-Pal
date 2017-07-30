@@ -1,4 +1,4 @@
-# Pong Pal
+# PongPal
 
 Pong Pal is a Slack App written in Python which fufills all of Lucid Software's ping pong needs.
 
