@@ -110,14 +110,16 @@ def handleMatchInput(message):
 
 	if (playerTwoScore > playerOneScore):
 		winnerName = playerTwoName
+		loserName = playerOneName
 		winnerScore = playerTwoScore
 		loserScore = playerOneScore
 	else:
 		winnerName = playerOneName
+		loserName = playerTwoName
 		winnerScore = playerOneScore
 		loserScore = playerTwoScore
 
-	result = "<@" + winnerName + ">" + " won! The score was " + str(winnerScore) + " - " + str(loserScore) + "."
+	result = "<@" + winnerName + ">" + " won against <@" + loserName + ">! The score was " + str(winnerScore) + " - " + str(loserScore) + "."
 	sendConfirmation("Congrats on another match! Type `confirm " + str(matchNum) + "` to confirm the result: " + result, playerTwoId)
 	return "text", result + " Match #" + str(matchNum) + " is awaiting confirmation from your opponent."
 
@@ -164,7 +166,7 @@ def displayRankings(message):
 			player = arg.strip('<@>')
 			forOnePlayer = True
 	table = BeautifulTable(max_width=100)
-	table.column_headers = ["Player Name","ELO", "Rank"]
+	table.column_headers = ["Rank", "ELO", "Player Name"]
 	if forOnePlayer:
 		c.execute('SELECT name, ELO FROM players WHERE user_id=?', (player,))
 		row = c.fetchone()
@@ -183,7 +185,7 @@ def displayRankings(message):
 			name, ELO = r[0], r[1]
 			if (ELO is not None):
 				index += 1
-				table.append_row([name, "%.2f" % ELO, index])
+				table.append_row([index, "%.2f" % ELO, name])
 		if index == 0:
 			return "text", "No players are ranked. Get out there and play some pong so that you can start inputting scores!"
 		return "text", "Displaying top " + str(index) + " player(s) at Lucid\n```"+str(table)+"```"
