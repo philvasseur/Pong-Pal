@@ -11,8 +11,9 @@ if __name__ == "__main__":
 		"chat.postMessage",
 		channel=user['id'],
 		as_user = True,
-		text="Hi! I'm PongPal. Do you play ping pong at Lucid? If so, type 'help' to get started!"
+		text="If you ever want to play ping pong, just message me `status`. If you want to be notified when the room is open, type `notify`. I'll be out of service for a few minutes, but then I'll be back online! And don't worry, this is the last unsolicited message you'll receieve :smiley:"
 	)
+		print("Messaged "+ user['name']);
 	while True:
 		print("finished")
 		time.sleep(1)
