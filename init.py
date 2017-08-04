@@ -54,10 +54,10 @@ def sendConfirmation(text, opponentId):
 if __name__ == "__main__":
 	if slack.rtm_connect():
 		BOT_ID = slack.api_call("auth.test").get('user_id')
-		users = []
 		for user in slack.api_call("users.list").get("members"):
-			users.append((datetime.now(),user["name"],user["id"],None))
-		c.executemany("INSERT OR IGNORE INTO players VALUES(?,?,?,?)",users)
+			c.execute("INSERT OR IGNORE INTO players VALUES(?,?,?,?)",(datetime.now(),user["name"],user["id"],None))
+			c.execute("UPDATE players SET user_id = ? WHERE name = ?",(user["id"],user["name"]))
+
 		conn.commit()
 		conn.close()
 		print('PongPal - Connected and Ready To Go!')
