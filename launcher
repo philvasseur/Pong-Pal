@@ -1,4 +1,0 @@
-until python init.py; do
-    echo "Pong Pal crashed with exit code $?.  Respawning.." >&2
-    sleep 1
-done
