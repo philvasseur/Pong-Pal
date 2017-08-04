@@ -2,13 +2,22 @@ import os,time,sqlite3
 from slackclient import SlackClient
 from config import BOT_TOKEN
 slack = SlackClient(BOT_TOKEN)
-if __name__ == "__main__":
-	print(slack.rtm_connect())
-	BOT_ID = slack.api_call("auth.test").get('user_id')
+
+def sendConfirmation(text, opponentId):
 	slack.api_call(
-	"chat.postMessage",
-	channel="U5N89N3K2",
-	as_user = True,
-	text="Test Message To Stephen Slater"
+		"chat.postMessage",
+		channel=opponentId,
+		as_user = True,
+		text=text
 	)
-	print("Messaged Stephen");
+
+if __name__ == "__main__":
+	if slack.rtm_connect():
+		BOT_ID = slack.api_call("auth.test").get('user_id')
+		print('PongPal - Connected and Ready To Go!')
+		while(True):
+			print('Sending Message');
+			sendConfirmation("Test message","U5N89N3K2")
+			time.sleep(5)
+	else:
+		print("Connection failed. Invalid Slack token or bot ID?")
