@@ -1,6 +1,6 @@
 # PongPal
 
-Pong Pal is a Slack App written in Python which fufills all of Lucid Software's ping pong needs.
+PongPal is a Slack App written in Python which fufills all of Lucid Software's ping pong needs.
 
 ## Features
 
@@ -17,4 +17,4 @@ Pong Pal is a Slack App written in Python which fufills all of Lucid Software's 
 
 ---
 
-###### Copyright © 2017 Pong Pal. All rights reserved.
+###### Copyright © 2017 PongPal. All rights reserved.
